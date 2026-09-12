@@ -1,0 +1,41 @@
+defaults:
+  - _self_
+
+paths:
+  checkpoint_dir: "../../../datasets/CVstage1/checkpoints_2/folds1"
+  log_dir: "../../../datasets/CVstage1/tensorboard_logs_2/"
+  fold: "1"
+
+datamodule:
+  _target_: src.datamodules.dendrite_datamodule.DendriteDataModule
+
+  train_patches_dir: "C:/Users/Student/datasets/CVstage1/folds1_2/train"
+  val_patches_dir: "C:/Users/Student/datasets/CVstage1/folds1_2/val"
+
+  # Оставляем null для обучения, заполняем при вызове python infer.py
+  predict_tiff_path: null
+  area_path: null
+  current_scale: null
+
+  batch_size: 16  
+  num_workers: 8 
+
+  # Параметры только для инференса (inference dataset)
+  patch_size: [64, 64, 64]
+  overlap: 32
+
+model:
+  _target_: src.models.segmentation_module.DendriteSegmentationModule
+  in_ch: 3
+  out_ch: 1
+  init_features: 32
+  lr: 0.005
+
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_epochs: 15
+  accelerator: "gpu"
+  devices: 1
+  check_val_every_n_epoch: 1
+  log_every_n_steps: 10

@@ -1,0 +1,51 @@
+QtPushButton#ProjectButton {
+   min-width : 22px;
+   max-width : 22px;
+   min-height : 22px;
+   max-height : 22px;
+   padding: 0px;
+}
+
+QtPushButton[mode="select_folder"] {
+   image: url("theme_{{ id }}:/select_folder.svg");
+}
+
+QtPushButton[mode="select_image"] {
+   image: url("theme_{{ id }}:/select_image.svg");
+}
+
+QtPushButton[mode="image_stage"] {
+   image: url("theme_{{ id }}:/image.svg");
+}
+
+QtPushButton[mode="add_layer_to_non_editable"] {
+   image: url("theme_{{ id }}:/compare.svg");
+}
+
+QtPushButton[mode="selected_stage"] {
+   image: url("theme_{{ id }}:/enter.svg");
+}
+
+QtPushButton[mode="previous_stage"] {
+   image: url("theme_{{ id }}:/return.svg");
+}
+
+QtPushButton[mode="delete_button"] {
+   image: url("theme_{{ id }}:/delete.svg");
+}
+
+QtPushButton[mode="restore_button"] {
+   image: url("theme_{{ id }}:/restore.svg");
+}
+
+QtPushButton[mode="export_button"] {
+   image: url("theme_{{ id }}:/export.svg");
+}
+
+QtPushButton[mode="background_button"] {
+   image: url("theme_{{ id }}:/background.svg");
+}
+
+QWidget[emphasized="true"] QtModePushButton[mode="delete_shape"]:pressed {
+  background-color: {{ error }};
+}

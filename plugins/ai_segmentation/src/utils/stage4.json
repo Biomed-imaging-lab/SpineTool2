@@ -1,0 +1,111 @@
+{
+    "need_images": true,
+    "iou_threshold": 0.5,
+    "data": [
+        {
+            "id": "in_vivo_5_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/5/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/5/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vivo_5_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vivo_5_result.tif"
+        },
+        {
+            "id": "in_vivo_10_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/10/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/10/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vivo_10_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vivo_10_result.tif"
+        },
+        {
+            "id": "in_vivo_12_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/12/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/12/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vivo_12_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vivo_12_result.tif"
+        },
+        {
+            "id": "in_vivo_14_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/14/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/14/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vivo_14_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vivo_14_result.tif"
+        },
+        {
+            "id": "in_vivo_16_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/16/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/16/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vivo_16_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vivo_16_result.tif"
+        },
+        {
+            "id": "in_vivo_18_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/18/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/18/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vivo_18_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vivo_18_result.tif"
+        },
+        {
+            "id": "in_vitro_1_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/1/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vitro/1/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vitro_1_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vitro_1_result.tif"
+        },
+        {
+            "id": "in_vitro_2_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/2/areas.tif",
+            "ground truth": "C:/Users/Student/datasets//in_vitro/2/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vitro_2_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vitro_2_result.tif"
+        },
+        {
+            "id": "in_vitro_3_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/3/areas.tif",
+            "ground truth": "C:/Users/Student/datasets//in_vitro/3/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vitro_3_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vitro_3_result.tif"
+        },
+        {
+            "id": "in_vitro_4_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/4/areas.tif",
+            "ground truth": "C:/Users/Student/datasets//in_vitro/4/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vitro_4_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vitro_4_result.tif"
+        },
+        {
+            "id": "in_vitro_5_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/5/areas.tif",
+            "ground truth": "C:/Users/Student/datasets//in_vitro/5/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vitro_5_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vitro_5_result.tif"
+        },
+        {
+            "id": "in_vitro_6_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/6/areas.tif",
+            "ground truth": "C:/Users/Student/datasets//in_vitro/6/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vitro_6_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vitro_6_result.tif"
+        },
+        {
+            "id": "in_vitro_8_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/8/areas.tif",
+            "ground truth": "C:/Users/Student/datasets//in_vitro/8/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vitro_8_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vitro_8_result.tif"
+        },
+        {
+            "id": "in_vitro_9_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/9/areas.tif",
+            "ground truth": "C:/Users/Student/datasets//in_vitro/9/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vitro_9_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vitro_9_result.tif"
+        },
+        {
+            "id": "in_vitro_10_final.tif",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/10/areas.tif",
+            "ground truth": "C:/Users/Student/datasets//in_vitro/10/voxel_mesh.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage4/result_gt_ch2/in_vitro_10_final.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage4/result/in_vitro_10_result.tif"
+        }
+    ]
+}

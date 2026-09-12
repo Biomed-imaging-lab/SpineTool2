@@ -1,0 +1,46 @@
+defaults:
+  - _self_
+
+paths:
+  checkpoint_dir: "../../../datasets/CVstage4/checkpoints/gt_ch2/folds3"
+  log_dir: "../../../datasets/CVstage4/tensorboard_logs_gt_ch2/"
+  fold: "3"
+
+datamodule:
+  _target_: src.datamodules.stage4_datamodule.Stage4DataModule
+  # ПУТИ К ПАПКАМ, КОТОРЫЕ СОЗДАЛ СКРИПТ stage4.py
+  train_patches_dir: "C:/Users/Student/datasets/CVstage4/gt_ch2/folds3/train"
+  val_patches_dir: "C:/Users/Student/datasets/CVstage4/gt_ch2/folds3/val"
+
+  # Оставляем null для обучения, заполняем при вызове python infer.py
+  vsot_shaft_path: null
+  vsot_spine_path: null
+  general_mask_path: null
+  shaft_dist_path: null
+  spine_dist_path: null
+  area_path: null
+
+  batch_size: 3  # Можно увеличить, так как нагрузка на CPU упала
+  num_workers: 8 # Можно ставить больше 0, так как файлы маленькие
+
+  # Параметры только для инференса (inference dataset)
+  patch_size: [64, 128, 128]
+  overlap: [48, 96, 96]
+
+model:
+  _target_: src.models.stage4_module.Stage4SegmentationModule
+  in_ch: 3
+  out_ch: 2
+  init_features: 64
+  lr: 0.005
+
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  precision: "bf16-mixed"
+  accumulate_grad_batches: 4
+  max_epochs: 30
+  accelerator: "gpu"
+  devices: 1
+  check_val_every_n_epoch: 1
+  log_every_n_steps: 10

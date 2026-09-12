@@ -1,0 +1,20 @@
+{
+    "need_images": true,
+    "iou_threshold": 0.5,
+    "data": [
+        {
+            "id": "endogenous_cell1_C1_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/finetune/endogenous_cell1_C1_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/finetune/endogenous_cell1_C1_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/endogenous_cell1_C1_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/endogenous_cell1_C1_L_dendrite.tif"
+        },
+        {
+            "id": "exogenous_cell4_C2_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/finetune/exogenous_cell4_C2_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/finetune/exogenous_cell4_C2_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/exogenous_cell4_C2_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/exogenous_cell4_C2_L_dendrite.tif"
+        }
+    ]
+}

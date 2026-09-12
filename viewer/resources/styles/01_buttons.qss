@@ -1,0 +1,103 @@
+
+/* ----------------- Buttons -------------------- */
+
+QtPushButton[with_mode="true"]{
+   min-width : 28px;
+   max-width : 28px;
+   min-height : 28px;
+   max-height : 28px;
+   padding: 0px;
+}
+
+QtPushButton[mode="new_points"] {
+  image: url("theme_{{ id }}:/new_points.svg");
+}
+
+QtPushButton[mode="new_labels"] {
+  image: url("theme_{{ id }}:/new_labels.svg");
+}
+
+QtPushButton[mode="roll"] {
+  image: url("theme_{{ id }}:/roll.svg");
+}
+
+QtPushButton[mode="transpose"] {
+  image: url("theme_{{ id }}:/transpose.svg");
+}
+
+QtPushButton[mode="home"] {
+  image: url("theme_{{ id }}:/home.svg");
+}
+
+QtPushButton[mode="ndisplay"]:checked {
+  image: url("theme_{{ id }}:/3D.svg");
+}
+
+QtPushButton[mode="ndisplay"] {
+  image: url("theme_{{ id }}:/2D.svg");
+}
+
+QtModeRadioButton {
+  min-height : 28px;
+  padding: 0px;
+}
+
+QtModeRadioButton::indicator:unchecked {
+  border-radius: 3px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background-color: {{ primary }};
+}
+
+QtModeRadioButton::indicator:checked {
+  border-radius: 3px;
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  background-color: {{ current }};
+}
+
+QtModeRadioButton::indicator:disabled {
+  background-color: {{ darken(foreground, 20) }}
+}
+
+QtModeRadioButton::indicator:unchecked:hover {
+  background-color: {{ highlight }};
+}
+
+QtModeRadioButton[mode="pan"]::indicator {
+  image: url("theme_{{ id }}:/pan_arrows.svg");
+}
+
+QtModeRadioButton[mode="paint"]::indicator {
+  image: url("theme_{{ id }}:/paint.svg");
+}
+
+QtModeRadioButton[mode="fill"]::indicator {
+  image: url("theme_{{ id }}:/fill.svg");
+}
+
+QtModeRadioButton[mode="connected_components"]::indicator {
+  image: url("theme_{{ id }}:/connected_components.svg");
+}
+
+QtModeRadioButton[mode="erase"]::indicator {
+    image: url("theme_{{ id }}:/erase.svg");
+}
+
+QtModeRadioButton[mode="select_points"]::indicator {
+    image: url("theme_{{ id }}:/select.svg");
+}
+
+QtModeRadioButton[mode="add_points"]::indicator {
+    image: url("theme_{{ id }}:/add.svg");
+}
+
+QtModePushButton[mode="shuffle"] {
+   image: url("theme_{{ id }}:/shuffle.svg");
+}
+
+QtModePushButton[mode="delete_shape"] {
+   image: url("theme_{{ id }}:/delete_shape.svg");
+}

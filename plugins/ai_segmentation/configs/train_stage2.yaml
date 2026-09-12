@@ -1,0 +1,43 @@
+defaults:
+  - _self_
+
+paths:
+  # checkpoint_dir: "../../../datasets/CVstage2/checkpoints_03skel/folds5"
+  # log_dir: "../../../datasets/CVstage2/tensorboard_logs_2/03skel"
+  checkpoint_dir: "../../../datasets/CVstage2/checkpoints_08skel/folds5"
+  log_dir: "../../../datasets/CVstage2/tensorboard_logs_2/08skel"
+  fold: "5"
+datamodule:
+  _target_: src.datamodules.stage2_datamodule.Stage2DataModule
+  # ПУТИ К ПАПКАМ, КОТОРЫЕ СОЗДАЛ СКРИПТ stage2.py
+  train_patches_dir: "C:/Users/Student/datasets/CVstage2/folds5_2/train"
+  val_patches_dir: "C:/Users/Student/datasets/CVstage2/folds5_2/val"
+
+  # Оставляем null для обучения, заполняем при вызове python infer.py
+  predict_tiff_path: null
+  predict_l_dendrite_path: null
+  area_path: null
+  current_scale: null
+
+  batch_size: 4
+  num_workers: 4
+
+  # Параметры только для инференса (inference dataset)
+  patch_size: [64, 64, 64]
+  overlap: 32
+
+model:
+  _target_: src.models.segmentation_module_stage2_skeleton.Stage2SegmentationModule
+  in_ch: 4
+  out_ch: 1
+  init_features: 64
+  lr: 0.005
+
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_epochs: 30
+  accelerator: "gpu"
+  devices: 1
+  check_val_every_n_epoch: 1
+  log_every_n_steps: 10

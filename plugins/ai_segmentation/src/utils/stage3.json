@@ -1,0 +1,111 @@
+{
+    "need_images": false,
+    "iou_threshold": 0.5,
+    "data": [
+        {
+            "id": "in_vivo_5",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/5/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/5/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vivo_5_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vivo_5_final.tif"
+        },
+        {
+            "id": "in_vivo_10",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/10/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/10/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vivo_10_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vivo_10_final.tif"
+        },
+        {
+            "id": "in_vivo_12",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/12/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/12/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vivo_12_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vivo_12_final.tif"
+        },
+        {
+            "id": "in_vivo_14",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/14/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/14/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vivo_14_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vivo_14_final.tif"
+        },
+        {
+            "id": "in_vivo_16",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/16/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/16/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vivo_16_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vivo_16_final.tif"
+        },
+        {
+            "id": "in_vivo_18",
+            "area of interest": "C:/Users/Student/datasets/in_vivo/18/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vivo/18/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vivo_18_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vivo_18_final.tif"
+        },
+        {
+            "id": "in_vitro_1",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/1/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vitro/1/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vitro_1_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vitro_1_final.tif"
+        },
+        {
+            "id": "in_vitro_2",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/2/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vitro/2/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vitro_2_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vitro_2_final.tif"
+        },
+        {
+            "id": "in_vitro_3",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/3/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vitro/3/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vitro_3_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vitro_3_final.tif"
+        },
+        {
+            "id": "in_vitro_4",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/4/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vitro/4/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vitro_4_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vitro_4_final.tif"
+        },
+        {
+            "id": "in_vitro_5",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/5/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vitro/5/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vitro_5_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vitro_5_final.tif"
+        },
+        {
+            "id": "in_vitro_6",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/6/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vitro/6/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vitro_6_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vitro_6_final.tif"
+        },
+        {
+            "id": "in_vitro_8",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/8/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vitro/8/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vitro_8_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vitro_8_final.tif"
+        },
+        {
+            "id": "in_vitro_9",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/9/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vitro/9/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vitro_9_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vitro_9_final.tif"
+        },
+        {
+            "id": "in_vitro_10",
+            "area of interest": "C:/Users/Student/datasets/in_vitro/10/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/in_vitro/10/necks.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage3/bin_pred_image/in_vitro_10_final_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/pred_image/in_vitro_10_final.tif"
+        }
+    ]
+}

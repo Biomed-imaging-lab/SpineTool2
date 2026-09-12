@@ -1,0 +1,111 @@
+{
+    "need_images": true,
+    "iou_threshold": 0.5,
+    "data": [
+        {
+            "id": "in_vivo_5_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_5_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vivo_5_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vivo_5_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vivo_5_L_dendrite.tif"
+        },
+        {
+            "id": "in_vivo_10_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_10_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vivo_10_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vivo_10_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vivo_10_L_dendrite.tif"
+        },
+        {
+            "id": "in_vivo_12_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_12_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vivo_12_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vivo_12_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vivo_12_L_dendrite.tif"
+        },
+        {
+            "id": "in_vivo_14_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_14_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vivo_14_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vivo_14_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vivo_14_L_dendrite.tif"
+        },
+        {
+            "id": "in_vivo_16_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_16_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vivo_16_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vivo_16_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vivo_16_L_dendrite.tif"
+        },
+        {
+            "id": "in_vivo_18_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_18_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vivo_18_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vivo_18_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vivo_18_L_dendrite.tif"
+        },
+        {
+            "id": "in_vitro_1_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_1_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vitro_1_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vitro_1_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vitro_1_L_dendrite.tif"
+        },
+        {
+            "id": "in_vitro_2_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_2_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vitro_2_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vitro_2_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vitro_2_L_dendrite.tif"
+        },
+        {
+            "id": "in_vitro_3_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_3_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vitro_3_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vitro_3_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vitro_3_L_dendrite.tif"
+        },
+        {
+            "id": "in_vitro_4_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_4_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vitro_4_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vitro_4_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vitro_4_L_dendrite.tif"
+        },
+        {
+            "id": "in_vitro_5_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_5_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vitro_5_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vitro_5_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vitro_5_L_dendrite.tif"
+        },
+        {
+            "id": "in_vitro_6_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_6_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vitro_6_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vitro_6_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vitro_6_L_dendrite.tif"
+        },
+        {
+            "id": "in_vitro_8_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_8_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vitro_8_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vitro_8_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vitro_8_L_dendrite.tif"
+        },
+        {
+            "id": "in_vitro_9_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_9_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vitro_9_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vitro_9_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vitro_9_L_dendrite.tif"
+        },
+        {
+            "id": "in_vitro_10_bin",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_10_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage1/mask_scale/in_vitro_10_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/binarization/in_vitro_10_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite/in_vitro_10_L_dendrite.tif"
+        }
+    ]
+}
