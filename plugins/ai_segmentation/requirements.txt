@@ -1,0 +1,22 @@
+--extra-index-url https://download.pytorch.org/whl/cu117
+setuptools==80.9.0
+pytorch-lightning==2.2.5
+torchmetrics==1.5.2
+connected-components-3d==4.0.0
+numpy==1.26.4
+scipy==1.14.1
+PyMaxflow==1.3.2
+scikit-image==0.24.0
+tifffile==2024.9.20
+opencv-python==4.10.0.84
+tqdm==4.68.3
+hydra-core==1.3.3
+omegaconf==2.3.1
+tensorboard==2.20.0
+matplotlib==3.10.8
+networkx==3.4.2
+edt==3.1.1
+kimimaro==5.8.1
+crackle-codec==0.47.0
+oct2py==5.8.0
+pytest==9.1.1

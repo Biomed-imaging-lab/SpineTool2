@@ -1,0 +1,35 @@
+{
+"type": "GENERAL_MASK",
+"test_data": ["in_vivo_14", "in_vitro_4"],
+"validation_data": ["in_vitro_7"],
+  "data": [
+    {
+      "name": "in_vivo_10",
+      "scale": [ 0.2, 0.0189, 0.0189 ],
+      "image": "../datasets/in_vivo/10/Project_Series010.tif",
+      "area_of_interest": "../datasets/in_vivo/10/areas.tif",
+      "general_mask": "../datasets/in_vivo/10/binarization.tif"
+    },
+    {
+      "name": "in_vivo_12",
+      "scale": [ 0.2, 0.0189, 0.0189 ],
+      "image": "../datasets/in_vivo/12/Project_Series012.tif",
+      "area_of_interest": "../datasets/in_vivo/12/areas.tif",
+      "general_mask": "../datasets/in_vivo/12/binarization.tif"
+    },
+    {
+      "name": "in_vivo_16",
+      "scale": [ 0.2, 0.0189, 0.0189 ],
+      "image": "../datasets/in_vivo/16/Project_Series016.tif",
+      "area_of_interest": "../datasets/in_vivo/16/areas.tif",
+      "general_mask": "../datasets/in_vivo/16/binarization.tif"
+    },
+    {
+      "name": "in_vivo_18",
+      "scale": [ 0.2, 0.0189, 0.0189 ],
+      "image": "../datasets/in_vivo/18/Project_Series018.tif",
+      "area_of_interest": "../datasets/in_vivo/18/areas.tif",
+      "general_mask": "../datasets/in_vivo/18/binarization.tif"
+    }
+  ]
+}

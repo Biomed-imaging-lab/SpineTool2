@@ -1,0 +1,100 @@
+from collections.abc import Collection, Generator
+from itertools import tee
+from typing import Iterable
+
+
+def validate_n_seq(n: int, dtype=None):
+    """Creates a function to validate a sequence of len == N and type == dtype.
+
+    Currently does **not** validate generators (will always validate true).
+
+    Parameters
+    ----------
+    n : int
+        Desired length of the sequence
+    dtype : type, optional
+        If provided each item in the sequence must match dtype, by default None
+
+    Returns
+    -------
+    function
+        Function that can be called on an object to validate that is a sequence
+        of len `n` and (optionally) each item in the sequence has type `dtype`
+    """
+
+    def func(obj):
+        """Function that validates whether an object is a sequence of len `n`.
+
+        Parameters
+        ----------
+        obj : any
+            the object to be validated
+
+        Raises
+        ------
+        TypeError
+            If the object is not an indexable collection.
+        ValueError
+            If the object does not have length `n`
+        TypeError
+            If `dtype` was provided to the wrapper function and all items in
+            the sequence are not of type `dtype`.
+        """
+
+        if isinstance(obj, Generator):
+            return
+        if not (isinstance(obj, Collection) and hasattr(obj, "__getitem__")):
+            raise TypeError(
+                "object '{obj}' is not an indexable collection (list, tuple, or np.array), of length {number}".format(
+                    obj=obj,
+                    number=n,
+                )
+            )
+        if len(obj) != n:
+            raise ValueError(
+                "object must have length {number}, got {obj_len}".format(
+                    number=n,
+                    obj_len=len(obj),
+                )
+            )
+        if dtype is not None:
+            for item in obj:
+                if not isinstance(item, dtype):
+                    raise TypeError(
+                        "Every item in the sequence must be of type {dtype}, but {item} is of type {item_type}".format(
+                            dtype=dtype,
+                            item=item,
+                            item_type=type(item),
+                        )
+                    )
+
+    return func
+
+
+def _pairwise(iterable: Iterable):
+    """Convert iterable to a zip object containing tuples of pairs along the
+    sequence.
+    """
+    # duplicate the iterable
+    a, b = tee(iterable)
+    # shift b by one position
+    next(b, None)
+    # create tuple pairs from the values in a and b
+    return zip(a, b)
+
+
+def validate_increasing(values: Iterable) -> None:
+    """Ensure that values in an iterable are monotocially increasing.
+
+    Raises
+    ------
+    ValueError
+        If `values` is constant or decreasing from one value to the next.
+    """
+    # convert iterable to pairwise tuples, check each tuple
+    if any(a >= b for a, b in _pairwise(values)):
+        raise ValueError(
+            "Sequence {sequence} must be monotonically increasing.".format(
+                sequence=values,
+            )
+        )

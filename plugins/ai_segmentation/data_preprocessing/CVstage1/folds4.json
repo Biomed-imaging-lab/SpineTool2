@@ -1,0 +1,231 @@
+{
+"type": "GENERAL_MASK",
+"test_data": ["deepd3_29", "in_vitro_6", "in_vitro_9", "in_vivo_16"],
+"validation_data": ["deepd3_4", "deepd3_16", "deepd3_18", "in_vitro_10", "in_vivo_5"],
+  "data": [
+        {
+      "name": "deepd3_0",
+      "scale": [ 0.5, 0.1035, 0.1035 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_0/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_0/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_0/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_4",
+      "scale": [ 0.5, 0.1035, 0.1035 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_4/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_4/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_4/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_6",
+      "scale": [ 0.5, 0.094, 0.094 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_6/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_6/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_6/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_7",
+      "scale": [ 0.5, 0.094, 0.094 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_7/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_7/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_7/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_15",
+      "scale": [ 0.5, 0.075, 0.075 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_15/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_15/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_15/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_16",
+      "scale": [ 0.5, 0.075, 0.075 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_16/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_16/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_16/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_17",
+      "scale": [ 0.5, 0.075, 0.075 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_17/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_17/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_17/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_18",
+      "scale": [ 0.5, 0.117, 0.117 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_18/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_18/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_18/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_19",
+      "scale": [ 0.5, 0.117, 0.117 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_19/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_19/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_19/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_20",
+      "scale": [ 0.5, 0.061, 0.061 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_20/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_20/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_20/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_24",
+      "scale": [ 0.5, 0.094, 0.094 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_24/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_24/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_24/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_25",
+      "scale": [ 0.5, 0.094, 0.094 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_25/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_25/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_25/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_26",
+      "scale": [ 0.5, 0.094, 0.094 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_26/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_26/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_26/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_27",
+      "scale": [ 0.5, 0.094, 0.094 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_27/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_27/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_27/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_28",
+      "scale": [ 0.5, 0.0232, 0.0232 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_28/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_28/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_28/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_29",
+      "scale": [ 0.5, 0.0232, 0.0232 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_29/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_29/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_29/channel_2.tiff"
+    },
+    {
+      "name": "deepd3_30",
+      "scale": [ 0.5, 0.1245, 0.1245 ],
+      "image": "../datasets/DeepD3/DeepD3_Training/separated_channels_30/channel_1.tiff",
+      "spines_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_30/channel_3.tiff",
+      "shaft_mask": "../datasets/DeepD3/DeepD3_Training/separated_channels_30/channel_2.tiff"
+    },
+    {
+      "name": "in_vivo_5",
+      "scale": [ 0.2, 0.0189, 0.0189 ],
+      "image": "../datasets/in_vivo/5/Project_Series005.tif",
+      "area_of_interest": "../datasets/in_vivo/5/areas.tif",
+      "general_mask": "../datasets/in_vivo/5/binarization.tif"
+    },
+    {
+      "name": "in_vivo_10",
+      "scale": [ 0.2, 0.0189, 0.0189 ],
+      "image": "../datasets/in_vivo/10/Project_Series010.tif",
+      "area_of_interest": "../datasets/in_vivo/10/areas.tif",
+      "general_mask": "../datasets/in_vivo/10/binarization.tif"
+    },
+    {
+      "name": "in_vivo_12",
+      "scale": [ 0.2, 0.0189, 0.0189 ],
+      "image": "../datasets/in_vivo/12/Project_Series012.tif",
+      "area_of_interest": "../datasets/in_vivo/12/areas.tif",
+      "general_mask": "../datasets/in_vivo/12/binarization.tif"
+    },
+    {
+      "name": "in_vivo_14",
+      "scale": [ 0.2, 0.0189, 0.0189 ],
+      "image": "../datasets/in_vivo/14/Project_Series014.tif",
+      "area_of_interest": "../datasets/in_vivo/14/areas.tif",
+      "general_mask": "../datasets/in_vivo/14/binarization.tif"
+    },
+    {
+      "name": "in_vivo_16",
+      "scale": [ 0.2, 0.0189, 0.0189 ],
+      "image": "../datasets/in_vivo/16/Project_Series016.tif",
+      "area_of_interest": "../datasets/in_vivo/16/areas.tif",
+      "general_mask": "../datasets/in_vivo/16/binarization.tif"
+    },
+    {
+      "name": "in_vivo_18",
+      "scale": [ 0.2, 0.0189, 0.0189 ],
+      "image": "../datasets/in_vivo/18/Project_Series018.tif",
+      "area_of_interest": "../datasets/in_vivo/18/areas.tif",
+      "general_mask": "../datasets/in_vivo/18/binarization.tif"
+    },
+    {
+      "name": "in_vitro_1",
+      "scale": [ 0.1, 0.022, 0.022 ],
+      "image": "../datasets/in_vitro/1/1.tif",
+      "area_of_interest": "../datasets/in_vitro/1/areas.tif",
+      "general_mask": "../datasets/in_vitro/1/binarization.tif"
+    },
+    {
+      "name": "in_vitro_2",
+      "scale": [ 0.1, 0.022, 0.022 ],
+      "image": "../datasets/in_vitro/2/2.tif",
+      "area_of_interest": "../datasets/in_vitro/2/areas.tif",
+      "general_mask": "../datasets/in_vitro/2/binarization.tif"
+    },
+    {
+      "name": "in_vitro_3",
+      "scale": [ 0.1, 0.022, 0.022 ],
+      "image": "../datasets/in_vitro/3/3.tif",
+      "area_of_interest": "../datasets/in_vitro/3/areas.tif",
+      "general_mask": "../datasets/in_vitro/3/binarization.tif"
+    },
+    {
+      "name": "in_vitro_4",
+      "scale": [ 0.1, 0.022, 0.022 ],
+      "image": "../datasets/in_vitro/4/4.tif",
+      "area_of_interest": "../datasets/in_vitro/4/areas.tif",
+      "general_mask": "../datasets/in_vitro/4/binarization.tif"
+    },
+    {
+      "name": "in_vitro_5",
+      "scale": [ 0.1, 0.022, 0.022 ],
+      "image": "../datasets/in_vitro/5/5.tif",
+      "area_of_interest": "../datasets/in_vitro/5/areas.tif",
+      "general_mask": "../datasets/in_vitro/5/binarization.tif"
+    },
+    {
+      "name": "in_vitro_6",
+      "scale": [ 0.1, 0.022, 0.022 ],
+      "image": "../datasets/in_vitro/6/6.tif",
+      "area_of_interest": "../datasets/in_vitro/6/areas.tif",
+      "general_mask": "../datasets/in_vitro/6/binarization.tif"
+    },
+    {
+      "name": "in_vitro_8",
+      "scale": [ 0.1, 0.022, 0.022 ],
+      "image": "../datasets/in_vitro/8/8.tif",
+      "area_of_interest": "../datasets/in_vitro/8/areas.tif",
+      "general_mask": "../datasets/in_vitro/8/binarization.tif"
+    },
+    {
+      "name": "in_vitro_9",
+      "scale": [ 0.1, 0.022, 0.022 ],
+      "image": "../datasets/in_vitro/9/9.tif",
+      "area_of_interest": "../datasets/in_vitro/9/areas.tif",
+      "general_mask": "../datasets/in_vitro/9/binarization.tif"
+    },
+    {
+      "name": "in_vitro_10",
+      "scale": [ 0.1, 0.022, 0.022 ],
+      "image": "../datasets/in_vitro/10/10.tif",
+      "area_of_interest": "../datasets/in_vitro/10/areas.tif",
+      "general_mask": "../datasets/in_vitro/10/binarization.tif"
+    }
+  ]
+}

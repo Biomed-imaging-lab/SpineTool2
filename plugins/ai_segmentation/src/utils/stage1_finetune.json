@@ -1,0 +1,41 @@
+{
+    "need_images": true,
+    "iou_threshold": 0.5,
+    "data": [
+        {
+            "id": "endogenous_cell1_C1_bin",
+            "area of interest": "C:/Users/Student/datasets/prefinetune/endo_1/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/prefinetune/endo_1/binarization.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/bin_fin_scaled/finetune_lora_42shl/endogenous_cell1_C1_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite_2/finetune_42shl_nohead/endogenous_cell1_C1_L_dendrite.tif"
+        },
+        {
+            "id": "endogenous_cell2_C1_bin",
+            "area of interest": "C:/Users/Student/datasets/prefinetune/endo_2/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/prefinetune/endo_2/binarization.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/bin_fin_scaled/finetune_lora_42shl/endogenous_cell2_C1_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite_2/finetune_42shl_nohead/endogenous_cell2_C1_L_dendrite.tif"
+        },
+        {
+            "id": "endogenous_cell3_C1_bin",
+            "area of interest": "C:/Users/Student/datasets/prefinetune/endo_3/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/prefinetune/endo_3/binarization.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/bin_fin_scaled/finetune_lora_42shl/endogenous_cell3_C1_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite_2/finetune_42shl_nohead/endogenous_cell3_C1_L_dendrite.tif"
+        },
+        {
+            "id": "exogenous_cell4_C2_bin",
+            "area of interest": "C:/Users/Student/datasets/prefinetune/exo_4/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/prefinetune/exo_4/binarization.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/bin_fin_scaled/finetune_lora_42shl/exogenous_cell4_C2_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite_2/finetune_42shl_nohead/exogenous_cell4_C2_L_dendrite.tif"
+        },
+        {
+            "id": "exogenous_cell5_C2_bin",
+            "area of interest": "C:/Users/Student/datasets/prefinetune/exo_5/areas.tif",
+            "ground truth": "C:/Users/Student/datasets/prefinetune/exo_5/binarization.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage1/bin_fin_scaled/finetune_lora_42shl/exogenous_cell5_C2_bin.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage2/L_dendrite_2/finetune_42shl_nohead/exogenous_cell5_C2_L_dendrite.tif"
+        }
+    ]
+}

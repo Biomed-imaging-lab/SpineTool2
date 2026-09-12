@@ -1,0 +1,259 @@
+QLabel#h1 {
+  font-size: 28px;
+}
+
+QLabel#h2 {
+  font-size: 22px;
+  color: {{ secondary }};
+}
+
+QLabel#h3 {
+  font-size: 18px;
+  color: {{ secondary }};
+}
+
+
+/* ------------- QMainWindow --------- */
+/* QDockWidgets will use the MainWindow styles
+as long as they are docked (though they use the
+style of QDockWidget when undocked) */
+
+QStatusBar { 
+  background: {{ background }};
+  color: {{ text }};
+}
+
+/* ------------- Window separator --------- */
+
+QMainWindow::separator {
+  width: 4px;
+  height: 4px;
+  border: none;
+  background-color: {{ background }};
+}
+
+QMainWindow::separator:hover {
+  background: {{ foreground }};
+}
+
+QMainWindow::separator:horizontal {
+  image: url("theme_{{ id }}:/horizontal_separator.svg");
+}
+
+QMainWindow::separator:vertical {
+  image: url("theme_{{ id }}:/vertical_separator.svg");
+}
+
+/* ------------- DockWidgets --------- */
+
+#QtCustomTitleBar {
+  padding-top:3px;
+  background-color: {{ background }};
+}
+
+#QtCustomTitleBar:hover {
+  background-color: {{ darken(background, 10) }};
+}
+
+#QtCustomTitleBarLine {
+  background-color: {{ foreground }};
+}
+
+#QtCustomTitleBar > QPushButton {
+  background-color: none;
+  max-width: 12px;
+  max-height: 12px;
+}
+
+#QtCustomTitleBar > QPushButton:hover {
+  background-color: {{ foreground }};
+}
+
+#QtCustomTitleBar > QLabel {
+  color: {{ primary }};
+  font-size: 11pt;
+}
+
+#QTitleBarFloatButton{
+    image: url("theme_{{ id }}:/pop_out.svg");
+    width: 10px;
+    height: 8px;
+    padding: 2 1 2 1;
+}
+
+#QTitleBarHideButton{
+    image: url("theme_{{ id }}:/visibility_off.svg");
+    width: 10px;
+    height: 8px;
+    padding: 2 1 2 1;
+}
+
+QSplitter {
+  spacing: 0px;
+  padding: 0px;
+  margin: 0px;
+}
+
+QtDivider {
+  spacing: 0px;
+  padding: 0px;
+  border: 0px;
+  margin: 0px 3px 0px 3px;
+  min-width: 214px;
+  min-height: 1px;
+  max-height: 1px;
+}
+
+QtDivider[selected=true] {
+  background-color: {{ text }};
+}
+
+QtDivider[selected=false] {
+  background-color: {{ background }};
+}
+
+QLabel#logo_silhouette {
+  image: url("theme_{{ id }}:/logo_silhouette.svg");
+}
+
+
+#QtModalPopup {
+  /* required for rounded corners to not have background color */
+  background: transparent;
+}
+
+#QtPopupFrame {
+  border: 1px solid {{ secondary }};
+  border-radius: 5px;
+}
+
+#QtPopupFrame > QLabel {
+  color: {{ darken(text, 35) }};
+  font-size: 12px;
+}
+
+/* ------------ Shortcut Viewer ------------ */
+
+ShortcutViewer QHeaderView::section {
+  padding: 2px;
+  border: None;
+}
+
+
+/* ------------ Notifications ------------ */
+
+QtNotification > QWidget {
+  background: none;
+}
+
+QtNotification::hover{
+  background: {{ lighten(background, 5) }};
+}
+
+QtNotification #expand_button {
+  background: none;
+  padding: 0px;
+  margin: 0px;
+  max-width: 20px;
+}
+
+QtNotification[expanded="false"] #expand_button {
+  image: url("theme_{{ id }}:/chevron_up.svg");
+}
+
+QtNotification[expanded="true"] #expand_button {
+  image: url("theme_{{ id }}:/chevron_down.svg");
+}
+
+QtNotification #close_button {
+  background: none;
+  image: url("theme_{{ id }}:/delete_shape.svg");
+  padding: 0px;
+  margin: 0px;
+  max-width: 20px;
+}
+
+QtNotification #source_label {
+  color: {{ primary }};
+  font-size: 11px;
+}
+
+QtNotification #severity_icon {
+  padding: 0;
+  margin: 0 0 -3px 0;
+  min-width: 20px;
+  min-height: 18px;
+  font-size: 15px;
+  color: {{ icon }};
+}
+
+/* ------------ Activity Dock ------------ */
+
+#QtCustomTitleLabel {
+  color: {{ primary }};
+  font-size: 11pt;  
+}
+
+#QtActivityButton:hover {
+  background-color: {{ lighten(background, 10) }};
+}
+
+QtFontSizePreview {
+  border: 1px solid {{ foreground }};
+  border-radius: 5px;
+}
+
+QListWidget#Preferences {
+ background: {{ background }};
+}
+
+QtWelcomeWidget, QtWelcomeWidget[drag=false] {
+  background: {{ canvas }};
+}
+
+QtWelcomeWidget[drag=true] {
+  background: {{ highlight }};
+}
+
+QtWelcomeLabel {
+ color: {{ foreground }};
+ font-size: 20px;
+}
+
+QtShortcutLabel {
+ color: {{ foreground }};
+ font-size: 16px;
+}
+
+#warning_icon_btn {
+  qproperty-icon: url("theme_{{ id }}:/warning.svg");
+}
+
+#warning_icon_element {
+  image: url("theme_{{ id }}:/warning.svg");
+  min-height: 30px;
+  min-width: 30px;
+  max-height: 30px;
+  max-width: 30px;
+}
+
+QMenu::separator {
+	height: 1 px;
+	background: {{ opacity(text, 90) }};
+	margin-left: 17 px;
+	margin-right: 6 px;
+	margin-top: 5 px;
+	margin-bottom: 3 px;
+}
+
+QMenu:disabled {
+  background-color: {{ background }};
+  selection-background-color: transparent;
+  border: 1px solid;
+  border-color: {{ foreground }};
+  color: {{ opacity(text, 90) }};
+}
+
+QMenu {
+	padding: 6 px;
+}

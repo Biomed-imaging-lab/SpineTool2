@@ -1,0 +1,856 @@
+#translations.yml
+supported_languages:
+  - en
+  - ru
+
+translations:
+  # application
+  "failed open project":
+    en: "Failed to open project"
+    ru: "Не удалось открыть проект"
+  "not recognize project type":
+    en: "Could not recognize the project type"
+    ru: "Не удалось определить тип проекта"
+  "select project file":
+    en: "Select project file..."
+    ru: "Выберите файл проекта..."
+  "exit full screen":
+    en: "Exit full screen"
+    ru: "Выйти из полноэрнанного режима"
+  "show shortcuts":
+    en: "Show all shortcuts"
+    ru: "Показать все горячие клавиши"
+  "show preferences":
+    en: "Show preferences"
+    ru: "Показать параметры"
+  "save current project":
+    en: "Save current project"
+    ru: "Сохранить текущий проект"
+  "close current project":
+    en: "Close current project"
+    ru: "Закрыть текущий проект"
+
+  # application settings
+  "general settings":
+    en: "General application settings"
+    ru: "Общие настройки приложения"
+  "application settings":
+    en: "Application settings"
+    ru: "Настройки приложения"
+  "language":
+    en: "Language"
+    ru: "Язык"
+  "language description":
+    en: "Select the user interface language"
+    ru: "Выбрать язык пользовательского интерфейса"
+  "en":
+    en: "English"
+    ru: "Английский"
+  "ru":
+    en: "Russian"
+    ru: "Русский"
+  "theme":
+    en: "Theme"
+    ru: "Тема"
+  "theme description":
+    en: "Select the user interface theme"
+    ru: "Выбрать тему интерфейса"
+  "light":
+    en: "Light"
+    ru: "Светлая"
+  "dark":
+    en: "Dark"
+    ru: "Темная"
+  "gui notification level":
+    en: "GUI notification level"
+    ru: "Уровень уведомлений в интерфейсе"
+  "gui notification level description":
+    en: "Select the notification level for the user interface"
+    ru: "Выбрать уровень уведомлений, отображаемых в интерфейсе"
+  "error":
+    en: "Error"
+    ru: "Ошибка"
+  "warning":
+    en: "Warning"
+    ru: "Предупреждение"
+  "info":
+    en: "Information"
+    ru: "Информация"
+  "none":
+    en: "None"
+    ru: "Ничего"
+  "console notification level":
+    en: "Console notification level"
+    ru: "Уровень уведомлений в консоли"
+  "console notification level description":
+    en: "Select the notification level for the console"
+    ru: "Выбрать уровень уведомлений, отображаемых в консоли"
+  "show status bar":
+    en: "Show status bar"
+    ru: "Показывать строку состояния"
+  "show status bar description":
+    en: "Toggle diplaying the status bar for the main window"
+    ru: "Переключить отображение строки состояния в главном окне"
+  "save window geometry":
+    en: "Save window geometry"
+    ru: "Сохранять геометрию окна"
+  "save window geometry description":
+    en: "Toggle saving the main window size and position"
+    ru: "Переключить сохранение размеров и положения главного окна"
+  "confirm settings restoring":
+    en: "Confirm settings restoring"
+    ru: "Подтверждать восстановление настроек по умолчанию"
+  "confirm settings restoring description":
+    en: "Ask for confirmation before restore default settings"
+    ru: "Запрашивать подтверждение перед восстановлением настроек по умолчанию"
+  "confirm application closing":
+    en: "Confirm application closing"
+    ru: "Подтверждать закрытие приложения"
+  "confirm application closing description":
+    en: "Ask for confirmation before closing application"
+    ru: "Запрашивать подтверждение перед закрытием приложения"
+  "save the project before closing":
+    en: "Save the project before closing"
+    ru: "Сохранять проект перед закрытием"
+  "save the project before closing description":
+    en: "Toggle for performing automatic saving of the current project before closing"
+    ru: "Переключить выполнение автоматического сохранения проекта перед закрытием"
+  "confirm project closing":
+    en: "Confirm project closing"
+    ru: "Подтверждать закрытие проекта"
+  "confirm project closing description":
+    en: "Ask for confirmation before closing project"
+    ru: "Запрашивать подтверждение перед закрытием проекта"
+
+  # segmentation settings
+  "segmentation settings":
+    en: "Segmentation settings"
+    ru: "Настройки сегментации"
+  "segmentation project settings":
+    en: "Segmentation project settings"
+    ru: "Настройки проекта сегментации"
+  "highlight thickness":
+    en: "Highlight thickness"
+    ru: "Толщина выделения"
+  "highlight thickness description":
+    en: "Select the highlight thickness when hovering over points"
+    ru: "Выберите толщину выделения для обозначения выбранных точек"
+  "keep active stages":
+    en: "Keep active stages"
+    ru: "Сохранять активые этапы"
+  "keep active stages description":
+    en: "Keep active stages when closing the project"
+    ru: "Сохранять активные этапы при закрытии проекта"
+  "keep non-editable layers":
+    en: "Keep non-editable layers"
+    ru: "Сохранять нередактируемые слои"
+  "keep non-editable layers description":
+    en: "Keep non-editable layers when closing the project"
+    ru: "Сохранять нередактируемые слои при закрытии проекта"
+  
+  # notifications
+  "view traceback":
+    en: "View Traceback"
+    ru: "Показать трассировку"
+
+  # welcome widget
+  "welcome text":
+    en: "Use menu to create new project\nor\nUse the menu shortcuts below:"
+    ru: "Используйте меню для создания нового проекта\nили\nИспользуйте комбинации клавиш ниже:"
+  "show all key bindings":
+    en: "Show all key bindings"
+    ru: "Показать все комбинации клавиш"
+
+  # activity widget
+  "activity":
+    en: "Activity"
+    ru: "Активные задачи"
+  "in progress":
+    en: "in progress..."
+    ru: "выполняются..."
+  "open project in queue":
+    en: "Open project task added in queue"
+    ru: "Загрука проекта добавлена в очередь задач"
+  "create layer in queue":
+    en: "Create layer task added to queue"
+    ru: "Создание слоя добавлено в очередь задач"
+  "creation in progress":
+    en: "Layer creation in progress"
+    ru: "Выполняется создание слоя"
+  "project loading":
+    en: "Project is loading"
+    ru: "Проект загружается"
+  "load in queue":
+    en: "Load task added to queue"
+    ru: "Загрузка добавлена в очередь"
+  "load in progress":
+    en: "Layer loading in progress"
+    ru: "Выполняется загрузка"
+  "delete in queue":
+    en: "Delete task added to queue"
+    ru: "Удаление добавлено в очередь"
+  "delete in progress":
+    en: "Layer deletion in progress"
+    ru: "Выполняется удаление"
+  "restore in queue":
+    en: "Restore task added to queue"
+    ru: "Восстановление добавлено в очередь"
+  "restore in progress":
+    en: "Layer restoration in progress"
+    ru: "Выполняется восстановление"
+  "export in queue":
+    en: "Export task added to queue"
+    ru: "Экспортирование добавлено в очередь"
+  "export in progress":
+    en: "Layer exporting in progress"
+    ru: "Выполняется экспортирование"
+  "save in queue":
+    en: "Save project task added to queue"
+    ru: "Сохранение добавлено в очередь"
+  "save in progress":
+    en: "Project saving in progress"
+    ru: "Выполняется сохранение"
+  "binarization in queue":
+    en: "Binarization task added to queue"
+    ru: "Бинаризация добавлена в очередь"
+  "binarization in progress":
+    en: "Binarization in progress"
+    ru: "Выполняется бинаризация"
+  "binarization update in queue":
+    en: "Binarization update task added to queue"
+    ru: "Обновление бинаризации добавлено в очередь"
+  "binarization update in progress":
+    en: "Binarization update in progress"
+    ru: "Выполняется обновление бинаризации"
+  "points in queue":
+    en: "Points finding added to queue"
+    ru: "Поиск точек добавлен в очередь"
+  "points in progress":
+    en: "Points finding in progress"
+    ru: "Выполняется поиск точек"
+  "points update in queue":
+    en: "Points set update task added to queue"
+    ru: "Обновление набора точек добавлено в очередь"
+  "points update in progress":
+    en: "Points set update in progress"
+    ru: "Выполняется обновление набора точек"
+  "necks in queue":
+    en: "Necks restoration added to queue"
+    ru: "Восстановление шеек добавлено в очередь"
+  "necks in progress":
+    en: "Necks restoration in progress"
+    ru: "Выполняется восстановление шеек"
+  "necks update in queue":
+    en: "Necks update task added to queue"
+    ru: "Обновление шеек добавлено в очередь"
+  "necks update in progress":
+    en: "Necks update in progress"
+    ru: "Выполняется обновление шеек"
+  "polygon_mesh in queue":
+    en: "Mesh building added to queue"
+    ru: "Построение меша добавлено в очередь"
+  "polygon_mesh in progress":
+    en: "Mesh building in progress"
+    ru: "Выполняется построение меша"
+  "polygon_mesh_segmentation in queue":
+    en: "Mesh segmentation added to queue"
+    ru: "Сегментация меша добавлена в очередь"
+  "polygon_mesh_segmentation in progress":
+    en: "Mesh segmentation in progress"
+    ru: "Выполняется сегментация меша"
+  "polygon_mesh_segmentation update in queue":
+    en: "Segmentation update added to queue"
+    ru: "Обновление сегментации добавлено в очередь"
+  "polygon_mesh_segmentation update in progress":
+    en: "Segmentation update in progress"
+    ru: "Выполняется обновление сегментации"
+  "voxel_mesh_segmentation in queue":
+    en: "Voxelization added to queue"
+    ru: "Вокселизация добавлена в очередь"
+  "voxel_mesh_segmentation in progress":
+    en: "Voxelization in progress"
+    ru: "Выполняется вокселизация"
+
+  # close application dialog
+  "close app title":
+    en: "Close application"
+    ru: "Закрыть приложение"
+  "close app text":
+    en: "Do you want to close the application?"
+    ru: "Вы хотите закрыть приложение?"
+  "close":
+    en: "Close"
+    ru: "Закрыть"
+  "do not ask":
+    en: "Do not ask in future"
+    ru: "Больше не спрашивать"
+
+  # close project dialog
+  "close project title":
+    en: "Close project"
+    ru: "Закрыть проект"
+  "close project text":
+    en: "Do you want to close the project?"
+    ru: "Вы хотите закрыть проект?"
+
+  # save project dialog
+  "save":
+    en: "Save"
+    ru: "Сохранить"
+  "not save":
+    en: "Don't save"
+    ru: "Не сохранять"
+  "use autosave":
+    en: "Autosave when closing"
+    ru: "Сохранять автоматически при закрытии"
+  "save project title":
+    en: "Save project"
+    ru: "Сохранить проект"
+  "save project text":
+    en: "Do you want to save the project?"
+    ru: "Вы хотите сохранить проект?"
+
+  # keyboard settings widget
+  "application":
+    en: "Application"
+    ru: "Приложение"
+  "project (segmentation)":
+    en: "Project (segmentation)"
+    ru: "Проект (сегментация)"
+  "group":
+    en: "Group"
+    ru: "Группа"
+  "action":
+    en: "Action"
+    ru: "Действие"
+  "subgroup":
+    en: "Subgroup"
+    ru: "Подгруппа"
+  "keybinding":
+    en: "Keybinding"
+    ru: "Комбинация клавиш"
+  "no key bindings":
+    en: "No key bindings"
+    ru: "Нет комбинаций клавиш"
+
+  # preferences dialog
+  "preferences title":
+    en: "Preferences"
+    ru: "Параметры"
+  "ok":
+    en: "Ok"
+    ru: "Применить"
+  "restore defaults":
+    en: "Restore defaults"
+    ru: "Сбросить настройки"
+  "shortcuts":
+    en: "Shortcuts"
+    ru: "Горячие клавиши"
+  "shortcuts description":
+    en: "Keyboard shortcuts for actions"
+    ru: "Горячие клавиши для быстрых действий"
+
+  # restore settings dialog
+  "restore settings title":
+    en: "Restore settings"
+    ru: "Восстановить настройки по умолчанию"
+  "restore settings text":
+    en: "Are you sure you want to restore default settings?"
+    ru: "Вы уверены, что хотите сбросить настройки к значениям по умолчанияю?"
+
+  # dock widget title bar
+  "dock title tool tip":
+    en: "Drag to move. Double-click to float"
+    ru: "Потяните для перемещения. Щелкните дважды, чтобы открепить"
+  "dock hide button tool tip":
+    en: "Hide this panel"
+    ru: "Скрыть"
+  "dock float button tool tip":
+    en: "Float this panel"
+    ru: "Открепить"
+
+  # file menu
+  "file":
+    en: "File"
+    ru: "Файл"
+  "create new project":
+    en: "Create new project ..."
+    ru: "Создать новый проект ..."
+  "segmentation":
+    en: "segmentation"
+    ru: "сегментация"
+  "neural_segmentation":
+    en: "neural segmentation"
+    ru: "нейросетевая сегментация"
+  "create new project (segmentation)":
+    en: "Create new project (segmentation)"
+    ru: "Создать новый проект (сегментация)"
+  "open project":
+    en: "Open project"
+    ru: "Открыть проект"
+  "save project":
+    en: "Save project"
+    ru: "Сохранить проект"
+  "open preferences":
+    en: "Open preferences"
+    ru: "Открыть настройки"
+  "close project":
+    en: "Close project"
+    ru: "Закрыть проект"
+
+  # window menu
+  "window":
+    en: "Window"
+    ru: "Окно"
+  "toggle full screen":
+    en: "Toggle full screen"
+    ru: "Переключить полноэкранный режим"
+  "toggle activity dock":
+    en: "Toggle activity dock"
+    ru: "Переключить виджет активных задач"
+
+  # create segmentation project dialog
+  "create":
+    en: "Create"
+    ru: "Создать"
+  "cancel":
+    en: "Cancel"
+    ru: "Отменить"
+  "create segmentation project":
+    en: "Create segmentation project"
+    ru: "Создать проект сегментации"
+  "creation instruction":
+    en: "Specify the name of the project, select the folder where the project will be created and specify the image or mesh (only latin letters are allowed)."
+    ru: "Укажите название проекта, выберите папку, в которой будет создан проект, и укажите исходное изображение или меш (из букв разрешена только латиница)."
+  "creation warning":
+    en: "It will be impossible to change the scale values in the future"
+    ru: "В дальнейшем изменить значения масштаба будет невозможно"
+  "select folder":
+    en: "Select folder... For correct operation, the letters used in the path must be only latin"
+    ru: "Выберите папку... Для корректной работы буквы, используемые в пути, должны быть только латиницей"
+  "select image":
+    en: "Select image..."
+    ru: "Выберите изображение..."
+
+  # project info widget
+  "project information":
+    en: "Project information"
+    ru: "Информация о проекте"
+  "project name":
+    en: "Project name:"
+    ru: "Название проекта:"
+  "folder":
+    en: "Project folder:"
+    ru: "Папка проекта:"
+  "original image":
+    en: "Original image/mesh:"
+    ru: "Исходное изображение/меш:"
+  "x scale":
+    en: "X scale (microns/voxel):"
+    ru: "Масштаб по X (мкм/воксель):"
+  "y scale":
+    en: "Y scale (microns/voxel):"
+    ru: "Масштаб по Y (мкм/воксель):"
+  "z scale":
+    en: "Z scale (microns/voxel):"
+    ru: "Масштаб по Z (мкм/воксель):"
+  "x display scale":
+    en: "X display scale modifier:"
+    ru: "Модификатор масштаба отображения по X:"
+  "y display scale":
+    en: "Y display scale modifier:"
+    ru: "Модификатор масштаба отображения по Y:"
+  "z display scale":
+    en: "Z display scale modifier:"
+    ru: "Модификатор масштаба отображения по Z:"
+  "cuda":
+    en: "Use CUDA instead of CPU (it will be faster)"
+    ru: "Использовать CUDA место CPU (будет выполняться быстрее)"
+
+
+  # preview options widget
+  "preview options":
+    en: "Preview options"
+    ru: "Параметры предпросмотра"
+  "no parameters":
+    en: "No parameters"
+    ru: "Нет параметров"
+  "fix parameters":
+    en: "Fix parameters"
+    ru: "Зафиксировать параметры"
+  "model weights":
+    en: "Model weights:"
+    ru: "Веса модели:"
+  "base threshold":
+    en: "Base threshold:"
+    ru: "Базовый порог:"
+  "weight":
+    en: "Local median weight:"
+    ru: "Вес локальной медианы:"
+  "block size":
+    en: "Block size:"
+    ru: "Размер блока:"
+  "apply user threshold":
+    en: "Apply user threshold to probabilities:"
+    ru: "Учитывать пользовательский threshold в вероятностях:"
+  "stage 4 overlap":
+    en: "Patch overlap:"
+    ru: "Перекрытие патчей:"
+  "stage 4 launch parameters":
+    en: "Stage 4 launch parameters"
+    ru: "Параметры запуска этапа 4"
+  "mixed precision":
+    en: "Mixed precision:"
+    ru: "Смешанная точность:"
+  "skeleton prune length":
+    en: "Prune side branches shorter than:"
+    ru: "Удалять боковые ветви короче:"
+  "min volume":
+    en: "Min volume (microns^3, log):"
+    ru: "Минимальный объем (мкм^3, log):"
+  "max distance":
+    en: "Max distance (microns):"
+    ru: "Максимальное расстояние (мкм):"
+  "intensity factor":
+    en: "Intensity factor (log):"
+    ru: "Коэффициент интенсивности (log):"
+  "floodfill radius":
+    en: "Floodfill radius:"
+    ru: "Радиус заливки:"
+  "floodfill factor":
+    en: "Floodfill factor:"
+    ru: "Коэффициент заливки:"
+  "use acwe":
+    en: "Use ACWE:"
+    ru: "Использовать ACWE:"
+  "acwe ext factor":
+    en: "ACWE ext factor:"
+    ru: "Параметр внешней области для ACWE:"
+  "acwe int factor":
+    en: "ACWE int factor:"
+    ru: "Параметр внутренней области для ACWE:"
+  "move camera to spine":
+    en: "Move camera:"
+    ru: "Перемещать камеру:"
+  "spine correction":
+    en: "Spine correction:"
+    ru: "Коррекция шипика:"
+  "remove spine":
+    en: "Remove spine"
+    ru: "Удалить шипик"
+  "restore spine":
+    en: "Restore spine"
+    ru: "Восстановить шипик"
+  "sensitivity":
+    en: "Sensitivity (log):"
+    ru: "Чувствительность (log):"
+  "correction":
+    en: "Correction:"
+    ru: "Коррекция:"
+  "spine depend":
+    en: "This spine depends on the spine"
+    ru: "Этот шипик зависит от шипика"
+  "spine affect":
+    en: "This spine affects spines:"
+    ru: "Этот шипик влияет на шипики:"
+  "spine intersect":
+    en: "This spine intersects spines:"
+    ru: "Этот шипик пересекается с шипиками:"
+  "spine":
+    en: "Spine:"
+    ru: "Шипик:"
+  "update spines positions":
+    en: "Update spines positions"
+    ru: "Обновить позиции шипиков"
+  "selected along x":
+    en: "Selected area along the x-axis:"
+    ru: "Выбранная область по x:"
+  "selected along y":
+    en: "Selected area along the y-axis:"
+    ru: "Выбранная область по y:"
+  "selected along z":
+    en: "Selected area along the z-axis:"
+    ru: "Выбранная область по z:"
+
+  # next stage selection widget
+  "background_image":
+    en: "Background image"
+    ru: "Фоновое изображение"
+  "preview":
+    en: "Preview: "
+    ru: "Предпросмотр: "
+  "next stage selection":
+    en: "Next stage selection"
+    ru: "Выбор следующего этапа"
+  "create new mask":
+    en: "Create new area"
+    ru: "Создать новую область"
+  "mask":
+    en: "Area of interest"
+    ru: "Область интереса"
+  "create new binarization":
+    en: "Binarize selected region"
+    ru: "Бинаризовать выбранную область"
+  "binarization":
+    en: "Binarization"
+    ru: "Бинаризация"
+  "create new points":
+    en: "Find restoration points"
+    ru: "Найти точки восстановления шеек"
+  "points":
+    en: "Neck restoration points"
+    ru: "Точки восстановления шеек"
+  "create new necks":
+    en: "Restore necks"
+    ru: "Восстановить шейки"
+  "necks":
+    en: "Restored necks"
+    ru: "Восстановленные шейки"
+  "create new mesh":
+    en: "Build mesh"
+    ru: "Построить меш"
+  "polygon mesh":
+    en: "Mesh"
+    ru: "Полигональная сетка"
+  "create new mesh segmentation":
+    en: "Segment mesh"
+    ru: "Сегментировать меш"
+  "polygon mesh segmentation":
+    en: "Segmented mesh"
+    ru: "Сегментированный меш"
+  "create new voxel segmentation":
+    en: "Build voxel mesh"
+    ru: "Построить воксельную сетку"
+  "voxel mesh segmentation":
+    en: "Voxel mesh segmentation"
+    ru: "Воксельная сетка сегментации"
+  "create new final segmentation":
+    en: "Restore segmented mesh"
+    ru: "Восстановить сегментированный меш"
+  "final segmentation":
+    en: "Final segmented mesh"
+    ru: "Итоговый сегментированный меш"
+
+  # layer controls widget
+  "layer controls":
+    en: "Layer controls"
+    ru: "Управление слоем"
+  "select layer":
+    en: "Select layer to display controls"
+    ru: "Выберите слой для отображения управляющих элементов"
+  "pan zoom":
+    en: "Pan zoom mode"
+    ru: "Режим панорамирования и масштабирования"
+  "paint":
+    en: "Paint mode"
+    ru: "Режим рисования"
+  "fill":
+    en: "Fill mode"
+    ru: "Режим заливки"
+  "erase":
+    en: "Erase mode"
+    ru: "Ластик"
+  "brush x radius":
+    en: "Brush radius x:"
+    ru: "Радиус кисти по x:"
+  "brush y radius":
+    en: "Brush radius y:"
+    ru: "Радиус кисти по y:"
+  "brush z radius":
+    en: "Brush radius z:"
+    ru: "Радиус кисти по z:"
+  "all same radii":
+    en: "Same brush radii:"
+    ru: "Одинаковые радиусы кисти:"
+  "cylinder limited height depth":
+    en: "Limit brush height/depth:"
+    ru: "Ограничить высоту/глубину кисти:"
+  "cylinder height depth":
+    en: "Brush height/depth:"
+    ru: "Высота/глубина кисти:"
+  "click to set color":
+    en: "Click to set color"
+    ru: "Нажмите для установки цвета"
+
+  # base layer controls
+  "opacity":
+    en: "Opacity:"
+    ru: "Непрозрачность:"
+  "translucent":
+    en: "translucent"
+    ru: "полупрозрачность"
+  "translucent_no_depth":
+    en: "translucent no depth"
+    ru: "полупрозрачность без учета глубины"
+  "additive":
+    en: "additive"
+    ru: "суммирование"
+  "opaque":
+    en: "opaque"
+    ru: "непрозрачность"
+
+  # image layer controls
+  "max intensity":
+    en: "Max intensity:"
+    ru: "Максимальная интенсивность:"
+  "iso threshold":
+    en: "Iso threshold:"
+    ru: "Порог изометрической отрисовки:"
+  "max intensity description":
+    en: "Display max intensity projection"
+    ru: "Отображать проекцию максимальной интенсивности"
+  "contrast limits":
+    en: "Contrast limits:"
+    ru: "Границы контрастности:"
+  "gamma":
+    en: "Gamma:"
+    ru: "Гамма:"
+  "colormap":
+    en: "Colormap:"
+    ru: "Цветовая карта:"
+  "blending":
+    en: "Blending:"
+    ru: "Смешивание:"
+  "interpolation":
+    en: "Interpolation:"
+    ru: "Интерполяция:"
+  "linear":
+    en: "linear"
+    ru: "линейная"
+  "nearest":
+    en: "nearest"
+    ru: "ближайшее значение"
+  "shading":
+    en: "Shading:"
+    ru: "Затенение:"
+  "point size":
+    en: "Point size:"
+    ru: "Размер точек:"
+  "symbol":
+    en: "Marker:"
+    ru: "Маркер:"
+  "face color":
+    en: "Face color:"
+    ru: "Цвет точек:"
+  "edge color":
+    en: "Edge color:"
+    ru: "Цвет границ:"
+  "out of slice":
+    en: "Out of slice:"
+    ru: "Точки вне среза:"
+  "update colors":
+    en: "Update colors of connected components"
+    ru: "Обновить цвета компонент связности"
+  "label":
+    en: "Label:"
+    ru: "Метка:"
+  "label color":
+    en: "Label color:"
+    ru: "Цвет метки:"
+  "paint mode":
+    en: "Brush type:"
+    ru: "Тип кисти:"
+  "preserve background":
+    en: "Preserve background:"
+    ru: "Сохранять фон:"
+  "selected color":
+    en: "Show selected:"
+    ru: "Показывать выбранное:"
+  "fill 3d":
+    en: "Fill 3D:"
+    ru: "3D заливка:"
+  "ellipse":
+    en: "ellipse"
+    ru: "эллипс"
+  "ellipsoid":
+    en: "ellipsoid"
+    ru: "эллипсоид"
+  "elliptical_cylinder":
+    en: "elliptical cylinder"
+    ru: "эллиптический цилиндр"
+  "background":
+    en: "background"
+    ru: "фон"
+  "general_label":
+    en: "dendrite"
+    ru: "дендрит"
+  "restored_necks":
+    en: "restored necks"
+    ru: "восстановленные шейки"
+  "spines":
+    en: "spines"
+    ru: "шипики"
+
+  # active layers widget
+  "active stages":
+    en: "Active stages"
+    ru: "Активные этапы"
+  "image":
+    en: "Image"
+    ru: "Изображение"
+
+  # additional layers widget
+  "additional layers":
+    en: "Additional non-editable layers"
+    ru: "Дополнительные нередактируемые слои"
+
+  # buttons widget
+  "control buttons":
+    en: "Project control buttons"
+    ru: "Управляющие кнопки проекта"
+  "viewer buttons":
+    en: "Viewer control buttons"
+    ru: "Управляющие кнопки просмотрщика"
+  "image stage":
+    en: "Go to the image stage"
+    ru: "Перейти к этапу изображения"
+  "add non editable":
+    en: "Add the selected layer to the non-editable ones"
+    ru: "Добавить выбранный слой к нередактируемым"
+  "selected stage":
+    en: "Go to the selected stage"
+    ru: "Перейти к выбранному этапу"
+  "previous stage":
+    en: "Go one stage back"
+    ru: "Перейти на один этап назад"
+  "delete":
+    en: "Delete the selected layer"
+    ru: "Удалить выбранный слой"
+  "restore":
+    en: "Restore the last deleted layer"
+    ru: "Восстановить последний удаленный слой"
+  "export":
+    en: "Export the selected layer"
+    ru: "Экспортировать выбранный слой"
+  "background image":
+    en: "Add background image"
+    ru: "Добавить фоновое изображение"
+
+  # viewer buttons
+  "roll button description":
+    en: "Change the dimensions displayed"
+    ru: "Изменить отображаемые измерения"
+  "home button description":
+    en: "Reset camera position and scale"
+    ru: "Сбросить позицию камеры и масштаб"
+  "transpose button description":
+    en: "Transpose layers"
+    ru: "Транспонировать слои"
+  "ndisplay button description":
+    en: "Toggle 2D/3D view"
+    ru: "Переключиться между 2D/3D"
+  "mesh complexity":
+    en: "Mesh complexity"
+    ru: "Сложность меша"
+  "fill holes before mesh":
+    en: "Fill enclosed holes before mesh"
+    ru: "Закрыть внутренние полости перед мешем"
+  "fill enclosed holes on fix":
+    en: "Fill enclosed holes on fix"
+    ru: "Закрыть внутренние полости при фиксации"
+  "threshold target":
+    en: "Threshold to tune"
+    ru: "Настраиваемый порог"
+  "fill holes before stage 4":
+    en: "Fill enclosed holes before stage 4"
+    ru: "Закрыть внутренние полости перед этапом 4"

@@ -1,0 +1,289 @@
+from functools import reduce
+from itertools import count
+from operator import ior
+from typing import TYPE_CHECKING, List, Optional, Union
+from weakref import ref
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (
+    QDockWidget,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
+
+from application.utils.utils import combine_widgets
+from utils.qt_block_signals import qt_signals_blocked
+from utils.qt_translater import Translater
+from widgets.qt_custom_label import QtLabel
+
+if TYPE_CHECKING:
+    from magicgui.widgets import Widget
+
+
+counter = count()
+
+
+class QtDockWidget(QDockWidget):
+    """Wrap a QWidget in a QDockWidget and forward viewer events
+
+    Parameters
+    ----------
+    parent : QWidget
+    widget : QWidget or magicgui.widgets.Widget
+        `widget` that will be added as QDockWidget's main widget.
+    name : str
+        Name of dock widget.
+    area : str
+        Side of the main window to which the new dock widget will be added.
+        Must be in {'left', 'right', 'top', 'bottom'}
+    allowed_areas : list[str], optional
+        Areas, relative to main window, that the widget is allowed dock.
+        Each item in list must be in {'left', 'right', 'top', 'bottom'}
+        By default, all areas are allowed.
+    add_vertical_stretch : bool, optional
+        Whether to add stretch to the bottom of vertical widgets (pushing
+        widgets up towards the top of the allotted area, instead of letting
+        them distribute across the vertical space).  By default, True.
+    """
+
+    def __init__(
+        self,
+        parent,
+        widget: Union[QWidget, "Widget"],
+        name: str = "",
+        area: str = "right",
+        allowed_areas: Optional[List[str]] = None,
+        object_name: str = "",
+        add_vertical_stretch=True,
+    ):
+        super().__init__(Translater.instance().get_translation(name))
+        self._parent = parent
+        self.name = name
+
+        areas = {
+            "left": Qt.DockWidgetArea.LeftDockWidgetArea,
+            "right": Qt.DockWidgetArea.RightDockWidgetArea,
+            "top": Qt.DockWidgetArea.TopDockWidgetArea,
+            "bottom": Qt.DockWidgetArea.BottomDockWidgetArea,
+        }
+        if area not in areas:
+            raise ValueError(
+                "area argument must be in {areas}".format(
+                    areas=list(areas.keys()),
+                )
+            )
+        self.area = area
+        self.qt_area = areas[area]
+
+        if allowed_areas:
+            if any(area not in areas for area in allowed_areas):
+                raise ValueError(
+                    "all allowed_areas argument must be in {areas}".format(
+                        areas=list(areas.keys()),
+                    )
+                )
+            allowed_areas = reduce(ior, [areas[a] for a in allowed_areas])
+        else:
+            allowed_areas = Qt.DockWidgetArea.AllDockWidgetAreas
+        self.setAllowedAreas(allowed_areas)
+        self.setMinimumHeight(50)
+        self.setMinimumWidth(50)
+        self.setObjectName(object_name)
+
+        is_vertical = area in {"left", "right"}
+        widget = combine_widgets(widget, vertical=is_vertical)
+        self.setWidget(widget)
+        if is_vertical and add_vertical_stretch:
+            self._maybe_add_vertical_stretch(widget)
+
+        self._features = self.features()
+        self.dockLocationChanged.connect(self._set_title_orientation)
+
+        # custom title bar
+        self.title = QtCustomTitleBar(self, title=self.name)
+        self.setTitleBarWidget(self.title)
+        self.visibilityChanged.connect(self._on_visibility_changed)
+        Translater.instance().language_changed_signal.connect(self.language_changed)
+
+    def language_changed(self):
+        self.setWindowTitle(Translater.instance().get_translation(self.name))
+
+    @property
+    def _parent(self) -> QWidget:
+        return self._ref_parent()
+
+    @_parent.setter
+    def _parent(self, obj):
+        self._ref_parent = ref(obj)
+
+    def _maybe_add_vertical_stretch(self, widget):
+        """Add vertical stretch to the bottom of a vertical layout only
+
+        ...if there is not already a widget that wants vertical space
+        (like a textedit or listwidget or something).
+        """
+        exempt_policies = {
+            QSizePolicy.Expanding,
+            QSizePolicy.MinimumExpanding,
+            QSizePolicy.Ignored,
+        }
+        if widget.sizePolicy().verticalPolicy() in exempt_policies:
+            return
+
+        # not uncommon to see people shadow the builtin layout() method
+        # which breaks our ability to add vertical stretch...
+        try:
+            wlayout = widget.layout()
+            if wlayout is None:
+                return
+        except TypeError:
+            return
+
+        for i in range(wlayout.count()):
+            wdg = wlayout.itemAt(i).widget()
+            if wdg is not None and wdg.sizePolicy().verticalPolicy() in exempt_policies:
+                return
+
+        # not all widgets have addStretch...
+        if hasattr(wlayout, "addStretch"):
+            wlayout.addStretch(next(counter))
+
+    def setFeatures(self, features):
+        super().setFeatures(features)
+        self._features = self.features()
+
+    def keyPressEvent(self, event):
+        return self._parent.keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        return self._parent.keyReleaseEvent(event)
+
+    def _set_title_orientation(self, area):
+        if area in (
+            Qt.DockWidgetArea.LeftDockWidgetArea,
+            Qt.DockWidgetArea.RightDockWidgetArea,
+        ):
+            features = self._features
+            if features & self.DockWidgetFeature.DockWidgetVerticalTitleBar:
+                features = features ^ self.DockWidgetFeature.DockWidgetVerticalTitleBar
+        else:
+            features = (
+                self._features | self.DockWidgetFeature.DockWidgetVerticalTitleBar
+            )
+        self.setFeatures(features)
+
+    @property
+    def is_vertical(self):
+        if not self.isFloating():
+            par = self.parent()
+            if par and hasattr(par, "dockWidgetArea"):
+                return par.dockWidgetArea(self) in (
+                    Qt.DockWidgetArea.LeftDockWidgetArea,
+                    Qt.DockWidgetArea.RightDockWidgetArea,
+                )
+        return self.size().height() > self.size().width()
+
+    def _on_visibility_changed(self, visible):
+        if not visible:
+            return
+        with qt_signals_blocked(self):
+            self.setTitleBarWidget(None)
+            if not self.isFloating():
+                self.title = QtCustomTitleBar(
+                    self, title=self.name, vertical=not self.is_vertical
+                )
+                self.setTitleBarWidget(self.title)
+
+    def setWidget(self, widget):
+        widget._parent = self
+        self.setFocusProxy(widget)
+        super().setWidget(widget)
+
+
+class QtCustomTitleBar(QLabel):
+    """A widget to be used as the titleBar in the QtDockWidget.
+
+    Keeps vertical size minimal, has a hand cursor and styles (in stylesheet)
+    for hover.
+
+    Parameters
+    ----------
+    parent : QDockWidget
+        The QtViewerDockWidget to which this titlebar belongs
+    title : str
+        A string to put in the titlebar.
+    vertical : bool
+        Whether this titlebar is oriented vertically or not.
+    """
+
+    def __init__(self, parent, title: str = "", vertical=False) -> None:
+        super().__init__(parent)
+        Translater.instance().language_changed_signal.connect(self.set_tool_tips)
+        self.setObjectName("QtCustomTitleBar")
+        self.setProperty("vertical", str(vertical))
+        self.vertical = vertical
+
+        line = QFrame(self)
+        line.setObjectName("QtCustomTitleBarLine")
+
+        self.hide_button = QPushButton(self)
+        self.hide_button.setObjectName("QTitleBarHideButton")
+        self.hide_button.setCursor(Qt.CursorShape.ArrowCursor)
+        self.hide_button.clicked.connect(lambda: self.parent().close())
+
+        self.float_button = QPushButton(self)
+        self.float_button.setObjectName("QTitleBarFloatButton")
+        self.float_button.setCursor(Qt.CursorShape.ArrowCursor)
+        self.float_button.clicked.connect(
+            lambda: self.parent().setFloating(not self.parent().isFloating())
+        )
+        self.title = QtLabel(title, parent=self)
+        self.title.setSizePolicy(
+            QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
+        )
+
+        if vertical:
+            layout = QVBoxLayout()
+            layout.setSpacing(4)
+            layout.setContentsMargins(0, 8, 0, 8)
+            line.setFixedWidth(1)
+            layout.addWidget(self.hide_button, 0, Qt.AlignmentFlag.AlignHCenter)
+            layout.addWidget(self.float_button, 0, Qt.AlignmentFlag.AlignHCenter)
+            layout.addWidget(line, 0, Qt.AlignmentFlag.AlignHCenter)
+            self.title.hide()
+        else:
+            layout = QHBoxLayout()
+            layout.setSpacing(4)
+            layout.setContentsMargins(8, 1, 8, 0)
+            line.setFixedHeight(1)
+            layout.addWidget(self.hide_button)
+            layout.addWidget(self.float_button)
+            layout.addWidget(line)
+            layout.addWidget(self.title)
+
+        self.setLayout(layout)
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.set_tool_tips()
+
+    def sizeHint(self):
+        szh = super().sizeHint()
+        if self.vertical:
+            szh.setWidth(30)
+        else:
+            szh.setHeight(30)
+        return szh
+
+    def set_tool_tips(self):
+        translater = Translater.instance()
+        self.setToolTip(translater.get_translation("dock title tool tip"))
+        self.hide_button.setToolTip(
+            translater.get_translation("dock hide button tool tip")
+        )
+        self.float_button.setToolTip(
+            translater.get_translation("dock float button tool tip")
+        )

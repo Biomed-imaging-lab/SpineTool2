@@ -1,0 +1,45 @@
+defaults:
+  - _self_
+
+paths:
+  checkpoint_dir: "../../../datasets/CVstage3/checkpoints/f_s2_08s/folds5"
+  log_dir: "../../../datasets/CVstage3/tensorboard_logs_f_s2_08s/"
+  fold: "5"
+
+datamodule:
+  _target_: src.datamodules.stage3_datamodule.Stage3DataModule
+
+  train_patches_dir: "C:/Users/Student/datasets/CVstage3/f_s2_08s/folds5/train"
+  val_patches_dir: "C:/Users/Student/datasets/CVstage3/f_s2_08s/folds5/val"
+
+  # Оставляем null для обучения, заполняем при вызове python infer.py
+  predict_tiff_path: null
+  predict_l_dendrite_path: null
+  predict_necks_path: null
+  area_path: null
+  current_scale: null
+
+  batch_size: 3  # батч тяжелый
+  num_workers: 6 #
+
+  # Параметры только для инференса (inference dataset)
+  patch_size: [64, 128, 128]
+  overlap: [32, 64, 64]
+
+model:
+  _target_: src.models.stage3_module.Stage3SegmentationModule
+  in_ch: 4
+  out_ch: 1
+  init_features: 64
+  lr: 0.005
+
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  precision: "bf16-mixed"
+  accumulate_grad_batches: 4
+  max_epochs: 20
+  accelerator: "gpu"
+  devices: 1
+  check_val_every_n_epoch: 1
+  log_every_n_steps: 10

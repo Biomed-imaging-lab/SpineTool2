@@ -1,0 +1,111 @@
+{
+    "need_images": true,
+    "iou_threshold": 0.5,
+    "data": [
+        {
+            "id": "in_vivo_5_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_5_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vivo_5_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vivo_5_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vivo_5_necks.tif"
+        },
+        {
+            "id": "in_vivo_10_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_10_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vivo_10_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vivo_10_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vivo_10_necks.tif"
+        },
+        {
+            "id": "in_vivo_12_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_12_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vivo_12_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vivo_12_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vivo_12_necks.tif"
+        },
+        {
+            "id": "in_vivo_14_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_14_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vivo_14_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vivo_14_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vivo_14_necks.tif"
+        },
+        {
+            "id": "in_vivo_16_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_16_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vivo_16_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vivo_16_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vivo_16_necks.tif"
+        },
+        {
+            "id": "in_vivo_18_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vivo_18_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vivo_18_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vivo_18_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vivo_18_necks.tif"
+        },
+        {
+            "id": "in_vitro_1_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_1_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vitro_1_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vitro_1_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vitro_1_necks.tif"
+        },
+        {
+            "id": "in_vitro_2_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_2_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vitro_2_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vitro_2_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vitro_2_necks.tif"
+        },
+        {
+            "id": "in_vitro_3_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_3_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vitro_3_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vitro_3_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vitro_3_necks.tif"
+        },
+        {
+            "id": "in_vitro_4_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_4_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vitro_4_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vitro_4_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vitro_4_necks.tif"
+        },
+        {
+            "id": "in_vitro_5_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_5_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vitro_5_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vitro_5_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vitro_5_necks.tif"
+        },
+        {
+            "id": "in_vitro_6_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_6_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vitro_6_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vitro_6_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vitro_6_necks.tif"
+        },
+        {
+            "id": "in_vitro_8_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_8_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vitro_8_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vitro_8_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vitro_8_necks.tif"
+        },
+        {
+            "id": "in_vitro_9_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_9_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vitro_9_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vitro_9_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vitro_9_necks.tif"
+        },
+        {
+            "id": "in_vitro_10_necks",
+            "area of interest": "C:/Users/Student/datasets/CVstage1/area_scale/in_vitro_10_areas_scaled.tif",
+            "ground truth": "C:/Users/Student/datasets/CVstage2/mask_scale/in_vitro_10_general_mask_scaled.tif",
+            "result mask": "C:/Users/Student/datasets/CVstage2/bin_neck/in_vitro_10_bin_neck.tif",
+            "pred_prob":"C:/Users/Student/datasets/CVstage3/necks/in_vitro_10_necks.tif"
+        }
+    ]
+}
