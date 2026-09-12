@@ -1,6 +1,6 @@
 ## Install
 1. Download code
-2. Unzip CGAL.zip next to code, e.g. `PATH_TO_CODE\CGAL\...`
+2. Download and Unzip [CGAL.zip] (https://github.com/Biomed-imaging-lab/SpineTool2/releases/download/0.1/CGAL.zip) next to code, e.g. `PATH_TO_CODE\CGAL\...`
 3. Install [Anaconda](https://www.anaconda.com/)
 4. Open Anaconda
 5. Execute
@@ -34,7 +34,7 @@ python run.py
 1. install gnu octave: download https://octave.org/download zip, extract
 2. clone vsot main branch https://github.com/yu-lab-vt/VSOT 
 3. to run predictions faster, install cuda driver + cuda toolkit
-4. download stage 1 to 4 segmentation models  and place to  plugins\ai_segmentation\models\stage_1\,  plugins\ai_segmentation\models\stage_2\, plugins\ai_segmentation\models\stage_3\, plugins\ai_segmentation\models\stage_4\
+4. download stage 1 to 4 [segmentation models](https://drive.google.com/file/d/1Sq58lruLRNGSK9YELmpDl3Ar8qTT49lR/view?usp=drive_link) and place to  plugins\ai_segmentation\models\stage_1\,  plugins\ai_segmentation\models\stage_2\, plugins\ai_segmentation\models\stage_3\, plugins\ai_segmentation\models\stage_4\
 5. run
 ```cmd
 cd PATH_TO_CODE
