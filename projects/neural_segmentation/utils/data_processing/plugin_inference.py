@@ -8,6 +8,11 @@ from typing import Optional
 import numpy as np
 from tifffile import imread
 
+from projects.neural_segmentation.utils.data_processing.mask_corrections import (
+    apply_binary_label_corrections,
+    resize_user_corrections,
+)
+
 from projects.segmentation.utils.data_processing.result import ProgressUpdate, Result
 
 
@@ -161,6 +166,7 @@ def run_ai_spines_inference(
     threshold_mode: str = "trunk",
     additional_files: Optional[dict] = None,
     process_environment: Optional[dict[str, str]] = None,
+    user_corrections: Optional[dict[str, np.ndarray]] = None,
 ):
     try:
         stage = plugin_request.get("stage", "")
@@ -292,6 +298,15 @@ def run_ai_spines_inference(
                 else None
             ),
         )
+        if user_corrections is not None and label_mode == "binary":
+            resized_corrections = resize_user_corrections(
+                user_corrections, tuple(labels.shape)
+            )
+            labels, correction_count = apply_binary_label_corrections(
+                labels, resized_corrections
+            )
+            if correction_count:
+                metadata["user_corrections_applied"] = correction_count
         _put_progress(queue_out, 100, "stage " + str(stage) + ": finished")
         queue_out.put(Result(labels, metadata))
     except Exception as err:
