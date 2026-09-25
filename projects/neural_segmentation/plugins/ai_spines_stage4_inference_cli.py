@@ -8,6 +8,7 @@ import traceback
 from typing import Any
 
 import numpy as np
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "max_split_size_mb:128")
 import torch
 from tifffile import imread, imwrite
 
@@ -408,13 +409,8 @@ def _predict_and_stitch_on_the_fly(
     dl = datamodule.predict_dataloader()
     original_shape = datamodule.predict_ds.shape
     use_cuda = device.startswith("cuda")
-    accumulator_device = torch.device(device if use_cuda else "cpu")
     full = None
-    counts = torch.zeros(
-        original_shape,
-        dtype=torch.float32,
-        device=accumulator_device,
-    )
+    counts = np.zeros(original_shape, dtype=np.uint16)
     try:
         total_batches = len(dl)
     except Exception:
@@ -439,7 +435,7 @@ def _predict_and_stitch_on_the_fly(
                 counts[z : z + vz, y : y + vy, x : x + vx] += 1
 
             if active_indices:
-                images = images_cpu[nonzero_mask].to(device)
+                images = images_cpu[nonzero_mask].to(device, non_blocking=use_cuda)
                 with torch.autocast(
                     device_type="cuda",
                     dtype=torch.float16,
@@ -453,24 +449,24 @@ def _predict_and_stitch_on_the_fly(
                         if channel_count == 1
                         else (channel_count, *original_shape)
                     )
-                    full = torch.zeros(
-                        full_shape,
-                        dtype=torch.float32,
-                        device=accumulator_device,
-                    )
+                    full = np.zeros(full_shape, dtype=np.float32)
+
+                predictions_cpu = predictions.float().cpu().numpy()
+                del predictions, images
 
                 for prediction_idx, batch_idx in enumerate(active_indices):
                     z, y, x = coords[batch_idx]
                     vz, vy, vx = valid_shapes[batch_idx]
-                    prediction = predictions[prediction_idx]
+                    prediction = predictions_cpu[prediction_idx]
                     if channel_count == 1:
                         full[z : z + vz, y : y + vy, x : x + vx] += prediction[
                             0, :vz, :vy, :vx
-                        ].float()
+                        ]
                     else:
                         full[:, z : z + vz, y : y + vy, x : x + vx] += prediction[
                             :, :vz, :vy, :vx
-                        ].float()
+                        ]
+                del predictions_cpu
             if total_batches > 0:
                 value = 62 + int(30 * batch_index / total_batches)
                 if value != last_value:
@@ -485,7 +481,7 @@ def _predict_and_stitch_on_the_fly(
                     )
                     last_value = value
 
-    counts.clamp_min_(1)
+    np.maximum(counts, 1, out=counts)
     if full is None:
         channel_count = _model_output_channels(model)
         empty_shape = (
@@ -495,10 +491,10 @@ def _predict_and_stitch_on_the_fly(
         )
         return np.zeros(empty_shape, dtype=np.float32)
     if full.ndim == 3:
-        probability = full / counts
+        full /= counts
     else:
-        probability = full / counts[None, :, :, :]
-    return probability.cpu().numpy()
+        full /= counts[None, :, :, :]
+    return full
 
 
 def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
@@ -522,7 +518,7 @@ def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
         spine_dist_path=prepared["spine_dist_path"],
         area_path=prepared["area_path"],
         batch_size=int(request.get("batch_size", 1)),
-        num_workers=int(request.get("num_workers", 1)),
+        num_workers=int(request.get("num_workers", 0)),
         patch_size=request.get("patch_size", [64, 128, 128]),
         overlap=request.get("overlap", [48, 96, 96]),
     )
@@ -542,6 +538,10 @@ def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
     )
     _emit_progress(62, "stage 4: predict patches")
     mixed_precision = bool(request.get("mixed_precision", False))
+    if device.startswith("cuda"):
+        device_properties = torch.cuda.get_device_properties(device)
+        if device_properties.total_memory <= 8 * 1024**3:
+            mixed_precision = True
     probability = _predict_and_stitch_on_the_fly(
         model,
         datamodule,
