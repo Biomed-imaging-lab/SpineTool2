@@ -29,14 +29,14 @@ class LayerParametersTracker:
             "colormap", ""
         )
         try:
-            os.remove(self._project_info.folder + file)
+            os.remove(self._project_info.resolve_path(file))
         except:
             pass
         file = self._project_info.layers_parameters[layer._id].parameters.get(
             "connected_components_colormap", ""
         )
         try:
-            os.remove(self._project_info.folder + file)
+            os.remove(self._project_info.resolve_path(file))
         except:
             pass
         self._project_info.layers_parameters[layer._id].parameters = (
@@ -217,7 +217,7 @@ class LayerParametersTracker:
                 filename = COLORMAPS_PATH + filename
             else:
                 filename = ADDITIONAL_COLORMAPS_PATH + filename
-        file = open(self._project_info.folder + filename, "w")
+        file = open(self._project_info.resolve_path(filename), "w")
         dump(colormap_desc, file)
         file.close()
         return filename
@@ -226,7 +226,7 @@ class LayerParametersTracker:
         if not path:
             return None
         try:
-            file = open(self._project_info.folder + path, "r")
+            file = open(self._project_info.resolve_path(path), "r")
             colormap_desc = load(file)
             file.close()
             return CyclicLabelColormap(
@@ -248,10 +248,9 @@ class LayerParametersTracker:
             layer1._vertices = layer2._vertices
             layer1._vertex_values = layer2._vertex_values.copy()
             file = open(
-                self._project_info.folder
-                + self._project_info.layers_parameters[layer2._id].tmp_additional_files[
+                self._project_info.resolve_path(self._project_info.layers_parameters[layer2._id].tmp_additional_files[
                     "spines"
-                ],
+                ]),
                 "r",
             )
             spines = load(file)
@@ -307,10 +306,9 @@ class LayerParametersTracker:
         layer1._vertices = layer2._vertices
         layer1._vertex_values = layer2._vertex_values.copy()
         file = open(
-            self._project_info.folder
-            + self._project_info.layers_parameters[layer2._id].tmp_additional_files[
+            self._project_info.resolve_path(self._project_info.layers_parameters[layer2._id].tmp_additional_files[
                 "spines"
-            ],
+            ]),
             "r",
         )
         spines = load(file)

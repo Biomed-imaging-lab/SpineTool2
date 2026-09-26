@@ -165,3 +165,9 @@ calculate_metrics.py
 settings.json
 CGAL/*
 docs/*
+# Downloaded runtimes and external repositories
+/external/
+
+# Local desktop and IDE metadata
+.DS_Store
+.idea/

@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 import json
 import numpy as np
 
@@ -10,7 +11,7 @@ def finalize_spine_preview(
     folder, metadata, queue_in, queue_out,
 ):
     try:
-        with open(folder + spines_file, encoding="utf-8") as stream:
+        with open(resolve_project_path(folder, spines_file), encoding="utf-8") as stream:
             source = json.load(stream)
         vertices, facets, values = mesh_v_f_vv
         values = np.asarray(values).copy()
@@ -27,7 +28,7 @@ def finalize_spine_preview(
             kept["spines"][str(spine_id)] = info
             kept["pos_to_id"][str(new_pos)] = spine_id
             output_spines.append(spines_files[old_pos])
-        with open(folder + spines_file, "w", encoding="utf-8") as stream:
+        with open(resolve_project_path(folder, spines_file), "w", encoding="utf-8") as stream:
             json.dump(kept, stream)
         data = FinalSegmentationData(
             mesh_file, (vertices, facets, values), output_spines

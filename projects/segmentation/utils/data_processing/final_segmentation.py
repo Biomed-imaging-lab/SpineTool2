@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 import os
 from datetime import datetime
 from itertools import product
@@ -251,10 +252,10 @@ def _reconstruct_surface(
             lock.acquire()
             if progress_queue is not None:
                 progress_queue.put(ProgressUpdate(95, description="write final mesh files"))
-            surface_poly.write_to_file(folder + mesh_filename)
+            surface_poly.write_to_file(resolve_project_path(folder, mesh_filename))
 
             for i, spine in enumerate(spine_meshes):
-                spine.write_to_file(folder + files[i])
+                spine.write_to_file(resolve_project_path(folder, files[i]))
 
             additional_file = (
                 TMP_AUXILIARY_PATH
@@ -265,7 +266,7 @@ def _reconstruct_surface(
                 .replace(":", "_")
                 + ".json"
             )
-            f = open(folder + additional_file, "w")
+            f = open(resolve_project_path(folder, additional_file), "w")
             dump(spines, f)
             f.close()
 

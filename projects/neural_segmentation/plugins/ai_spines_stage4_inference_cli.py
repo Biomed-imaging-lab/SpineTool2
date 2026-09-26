@@ -6,6 +6,10 @@ import os
 import sys
 import traceback
 from typing import Any
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from utils.project_paths import is_absolute_path, is_legacy_project_path, resolve_project_path
 
 import numpy as np
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "max_split_size_mb:128")
@@ -120,16 +124,13 @@ def _resolve_project_path(
     request: dict[str, Any], key: str, *, must_exist: bool = True
 ) -> str:
     value = str(_required(request, key))
-    drive, _ = os.path.splitdrive(value)
-    is_external_absolute = bool(drive) or value.startswith("\\\\")
+    is_external_absolute = is_absolute_path(value) and not is_legacy_project_path(value)
     if is_external_absolute and (not must_exist or os.path.exists(value)):
-        return os.path.normpath(value)
+        return resolve_project_path("", value)
 
     project_root = str(request.get("project_root", ""))
     if project_root:
-        rooted = os.path.normpath(
-            os.path.join(project_root, value.lstrip("/\\"))
-        )
+        rooted = resolve_project_path(project_root, value)
         if not must_exist or os.path.exists(rooted):
             return rooted
 

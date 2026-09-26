@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 import os
 from datetime import datetime
 from json import dump
@@ -203,11 +204,11 @@ def voxel_to_mesh(
         + str(datetime.now()).replace(".", "_").replace(" ", "_").replace(":", "_")
         + ".off"
     )
-    _save_off(vertices, facets, folder + mesh_file)
+    _save_off(vertices, facets, resolve_project_path(folder, mesh_file))
 
-    surface_poly = Polyhedron_3(folder + mesh_file)
+    surface_poly = Polyhedron_3(resolve_project_path(folder, mesh_file))
     try:
-        os.remove(folder + mesh_file)
+        os.remove(resolve_project_path(folder, mesh_file))
     except:
         ...
 
@@ -233,7 +234,7 @@ def _build_surface(
             + str(datetime.now()).replace(".", "_").replace(" ", "_").replace(":", "_")
             + ".tif"
         )
-        imwrite(folder + tif_file, data=mesh_base)
+        imwrite(resolve_project_path(folder, tif_file), data=mesh_base)
 
         mesh_file = (
             TMP_LAYERS_PATH
@@ -241,9 +242,9 @@ def _build_surface(
             + str(datetime.now()).replace(".", "_").replace(" ", "_").replace(":", "_")
             + ".off"
         )
-        surface_poly.write_to_file(folder + mesh_file)
+        surface_poly.write_to_file(resolve_project_path(folder, mesh_file))
 
-        surface_poly = Polyhedron_3(folder + mesh_file)
+        surface_poly = Polyhedron_3(resolve_project_path(folder, mesh_file))
 
         descriptions, error = create_mesh_descriptions(
             surface_poly, folder + TMP_AUXILIARY_PATH

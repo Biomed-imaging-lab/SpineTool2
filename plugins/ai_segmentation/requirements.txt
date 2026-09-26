@@ -1,4 +1,4 @@
---extra-index-url https://download.pytorch.org/whl/cu117
+# Shared AI dependencies. Install the CPU/CUDA PyTorch build separately.
 setuptools==80.9.0
 pytorch-lightning==2.2.5
 torchmetrics==1.5.2

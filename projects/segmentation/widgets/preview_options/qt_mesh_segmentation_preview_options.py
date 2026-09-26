@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 from json import load
 
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -46,7 +47,7 @@ class QtMeshSegmentationPreviewOptions(QtPreviewOptions):
         self._layer = layer
         self._camera = camera
         self._deleted_spines = deleted_spines
-        with open(folder + spines_file) as f:
+        with open(resolve_project_path(folder, spines_file)) as f:
             self._spines = load(f)
 
         self.sensitivity_slider = QDoubleSlider(Qt.Orientation.Horizontal, self)

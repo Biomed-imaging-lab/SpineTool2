@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 import os
 import re
 import subprocess
@@ -485,7 +486,7 @@ class SegmentationProject(ProjectBase):
                             if filename != self._project_info.layers_parameters[
                                 parent_id
                             ].tmp_additional_files.get(desc, ""):
-                                os.remove(self._project_info.folder + filename)
+                                os.remove(self._project_info.resolve_path(filename))
                 elif layer_type == Types.NECKS:
                     processed = False
                     parent_id = self._project_info.data.layers[
@@ -512,13 +513,13 @@ class SegmentationProject(ProjectBase):
                             if filename != self._project_info.layers_parameters[
                                 parent_id
                             ].tmp_additional_files.get(desc, ""):
-                                os.remove(self._project_info.folder + filename)
+                                os.remove(self._project_info.resolve_path(filename))
                 else:
                     for desc, filename in result.additional_files.items():
                         if filename != self._project_info.layers_parameters[
                             self._active_data_processing_task.layer_id
                         ].tmp_additional_files.get(desc, ""):
-                            os.remove(self._project_info.folder + filename)
+                            os.remove(self._project_info.resolve_path(filename))
             if result.error != "":
                 if not (
                     self._active_data_processing_task.layer_id
@@ -548,8 +549,8 @@ class SegmentationProject(ProjectBase):
                     self._active_data_processing_task.layer_id
                 ]
                 if isinstance(result.data, SurfaceData):
-                    os.remove(self._project_info.folder + result.data.mesh_file)
-                    os.remove(self._project_info.folder + result.data.tif_file)
+                    os.remove(self._project_info.resolve_path(result.data.mesh_file))
+                    os.remove(self._project_info.resolve_path(result.data.tif_file))
                 elif isinstance(result.data, SegmentationData):
                     deleted_files = (
                         set(result.data.spines_files).union(
@@ -559,10 +560,10 @@ class SegmentationProject(ProjectBase):
                         - set(parameters.tmp_adjusted_spines_files)
                     )
                     for file in deleted_files:
-                        os.remove(self._project_info.folder + file)
+                        os.remove(self._project_info.resolve_path(file))
                 elif isinstance(result.data, FinalSegmentationData):
                     if parameters.tmp_mesh_file != result.data.mesh_file:
-                        os.remove(self._project_info.folder + result.data.mesh_file)
+                        os.remove(self._project_info.resolve_path(result.data.mesh_file))
                     deleted_files = (
                         set(result.data.spines_files).union(
                             result.data.adjusted_spines_files
@@ -571,10 +572,10 @@ class SegmentationProject(ProjectBase):
                         - set(parameters.tmp_adjusted_spines_files)
                     )
                     for file in deleted_files:
-                        os.remove(self._project_info.folder + file)
+                        os.remove(self._project_info.resolve_path(file))
                 for desc, filename in result.additional_files.items():
                     if filename != parameters.tmp_additional_files.get(desc, ""):
-                        os.remove(self._project_info.folder + filename)
+                        os.remove(self._project_info.resolve_path(filename))
                 self._active_data_processing_task = None
                 return
 
@@ -4039,7 +4040,7 @@ class SegmentationProject(ProjectBase):
             alpha = 255 / (max_value - min_value)
             data = data.astype("float") * alpha
             data = np.round(data).astype("uint8")
-        imwrite(folder + new_image_path, data=data)
+        imwrite(resolve_project_path(folder, new_image_path), data=data)
 
         project = ProjectInfo(folder=folder)
         project.name = name
@@ -4080,9 +4081,9 @@ class SegmentationProject(ProjectBase):
         shape = (n, n, n)  # (z, y, x)
 
         new_mesh_path = LAYERS_PATH + "/0.off"
-        copy(mesh_path, folder + new_mesh_path)
+        copy(mesh_path, resolve_project_path(folder, new_mesh_path))
 
-        surface_poly = Polyhedron_3(folder + new_mesh_path)
+        surface_poly = Polyhedron_3(resolve_project_path(folder, new_mesh_path))
         descriptions, error = create_mesh_descriptions(surface_poly, folder + AUXILIARY_PATH)
         if error != "":
             return None

@@ -214,15 +214,25 @@ class TestKernelAndPolyhedron(CgalTestCase):
         self.assertTrue(facet.is_triangle())
         around_facet = facet.facet_begin()
         facet_vertex_ids = []
-        while around_facet.hasNext():
+        self.assertTrue(around_facet.hasNext())
+        facet_start = around_facet.deepcopy()
+        while True:
             facet_vertex_ids.append(around_facet.next().vertex().id())
+            if around_facet == facet_start:
+                break
+            self.assertLess(len(facet_vertex_ids), mesh.size_of_halfedges())
         self.assertEqual(len(facet_vertex_ids), 3)
 
         vertex_halfedge = vertices[1].halfedge()
         around_vertex = vertex_halfedge.vertex_begin()
         neighbours = []
-        while around_vertex.hasNext():
+        self.assertTrue(around_vertex.hasNext())
+        vertex_start = around_vertex.deepcopy()
+        while True:
             neighbours.append(around_vertex.next().opposite().vertex().point())
+            if around_vertex == vertex_start:
+                break
+            self.assertLess(len(neighbours), mesh.size_of_halfedges())
         self.assertEqual(len(neighbours), 3)
         self.assertIsNotNone(vertex_halfedge.facet())
 
@@ -278,10 +288,12 @@ class TestPolygonMeshProcessing(CgalTestCase):
     def test_stitch_borders(self) -> None:
         mesh = self.polyhedron(UNSTITCHED_SQUARE_OFF)
         before_vertices = mesh.size_of_vertices()
-        before_borders = mesh.size_of_border_edges()
+        before_borders = sum(halfedge.is_border() for halfedge in mesh.halfedges())
         stitch_borders(mesh)
         self.assertLess(mesh.size_of_vertices(), before_vertices)
-        self.assertLess(mesh.size_of_border_edges(), before_borders)
+        self.assertLess(
+            sum(halfedge.is_border() for halfedge in mesh.halfedges()), before_borders
+        )
         self.assertEqual(mesh.size_of_facets(), 2)
         self.assertTrue(mesh.is_valid())
 

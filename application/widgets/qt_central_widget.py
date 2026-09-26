@@ -15,6 +15,7 @@ from application.utils.constants import (
     SHOW_ALL_SHORTCUTS_SHORTCUT_TEXT,
 )
 from widgets.qt_custom_label import QtLabel
+from utils.shortcuts import format_shortcut
 
 
 class QtWelcomeLabel(QtLabel):
@@ -47,11 +48,11 @@ class QtWelcomeWidget(QWidget):
 
         shortcut_layout = QFormLayout()
         shortcut_layout.addRow(
-            QtShortcutLabel(OPEN_PROJECT_SHORTCUT_TEXT),
+            QtShortcutLabel(format_shortcut(OPEN_PROJECT_SHORTCUT_TEXT)),
             QtShortcutLabel("open project"),
         )
         shortcut_layout.addRow(
-            QtShortcutLabel(SHOW_ALL_SHORTCUTS_SHORTCUT_TEXT),
+            QtShortcutLabel(format_shortcut(SHOW_ALL_SHORTCUTS_SHORTCUT_TEXT)),
             QtShortcutLabel("show all key bindings"),
         )
         shortcut_layout.setSpacing(0)

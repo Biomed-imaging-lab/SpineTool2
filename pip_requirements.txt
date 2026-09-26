@@ -15,7 +15,7 @@ psygnal==0.11.1
 Pygments==2.18.0
 PyOpenGL==3.1.7
 PyQt5==5.15.11
-PyQt5-Qt5==5.15.2
+PyQt5-Qt5==5.15.2; sys_platform == "win32"
 PyQt5_sip==12.15.0
 PyYAML==6.0.2
 QtPy==2.4.1

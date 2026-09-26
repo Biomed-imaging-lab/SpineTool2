@@ -1,3 +1,5 @@
+import sys
+
 from enum import auto
 
 from utils.misc import StringEnum
@@ -50,7 +52,7 @@ PAN_ZOOM_TMP_SHORTCUT_TEXT = "X"
 MAX_INTENSITY_SHORTCUT_TEXT = "M"
 
 UNDO_SHORTCUT_TEXT = "Ctrl+Z"
-REDO_SHORTCUT_TEXT = "Ctrl+Y"
+REDO_SHORTCUT_TEXT = "Ctrl+Shift+Z" if sys.platform == "darwin" else "Ctrl+Y"
 
 SHUFFLE_COLORS_SHORTCUT_TEXT = "Shift+C"
 PAN_ZOOM_SHORTCUT_TEXT = "1"
