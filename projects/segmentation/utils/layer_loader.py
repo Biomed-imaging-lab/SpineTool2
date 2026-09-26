@@ -829,7 +829,9 @@ class LayerLoader:
         else:
             file = self._project_info.layers_parameters[info.id].tmp_file
             parameters = self._project_info.layers_parameters[info.id]
-        data = imread(self._project_info.folder + file).astype(np.uint8)
+        data = imread(self._project_info.resolve_path(file, must_exist=True)).astype(
+            np.uint8
+        )
         return (info, parameters, data)
 
     def create_labels(
@@ -898,7 +900,9 @@ class LayerLoader:
         if file == "":
             data = np.zeros(self._project_info.shape, dtype=np.uint8)
         else:
-            data = imread(self._project_info.folder + file).astype(np.uint8)
+            data = imread(self._project_info.resolve_path(file, must_exist=True)).astype(
+                np.uint8
+            )
         return (info, parameters, data)
 
     def create_points(
@@ -1001,7 +1005,9 @@ class LayerLoader:
         else:
             file = self._project_info.layers_parameters[info.id].tmp_file
             parameters = self._project_info.layers_parameters[info.id]
-        data = np.fromfile(self._project_info.folder + file, dtype=np.uint16)
+        data = np.fromfile(
+            self._project_info.resolve_path(file, must_exist=True), dtype=np.uint16
+        )
         data = np.reshape(data, (-1, 3))
         return (info, parameters, data)
 
@@ -1077,7 +1083,7 @@ class LayerLoader:
         else:
             file = self._project_info.layers_parameters[info.id].tmp_file
             parameters = self._project_info.layers_parameters[info.id]
-        with open(self._project_info.folder + file) as f:
+        with open(self._project_info.resolve_path(file, must_exist=True)) as f:
             data = load(f)
         data = (
             np.array(data["vertices"], dtype=np.uint16),
@@ -1092,7 +1098,9 @@ class LayerLoader:
 
         if layer_type == Types.POLYGON_MESH:
             surface_poly = Polyhedron_3(
-                self._project_info.folder + layer_parameters.tmp_mesh_file
+                self._project_info.resolve_path(
+                    layer_parameters.tmp_mesh_file, must_exist=True
+                )
             )
             for v in surface_poly.vertices():
                 v.set_point(Point_3(v.point().z(), v.point().y(), v.point().x()))
@@ -1102,7 +1110,9 @@ class LayerLoader:
             k = 0
             for i, file in enumerate(layer_parameters.tmp_adjusted_spines_files):
                 if i not in layer_parameters.tmp_deleted_spines and file != "":
-                    surface_poly = Polyhedron_3(self._project_info.folder + file)
+                    surface_poly = Polyhedron_3(
+                        self._project_info.resolve_path(file, must_exist=True)
+                    )
                     for h in surface_poly.halfedges():
                         if h.is_border():
                             surface_poly.fill_hole(h)
@@ -1119,7 +1129,9 @@ class LayerLoader:
 
         elif layer_type == Types.FINAL_SEGMENTATION:
             surface_poly = Polyhedron_3(
-                self._project_info.folder + layer_parameters.tmp_mesh_file
+                self._project_info.resolve_path(
+                    layer_parameters.tmp_mesh_file, must_exist=True
+                )
             )
             for v in surface_poly.vertices():
                 v.set_point(Point_3(v.point().z(), v.point().y(), v.point().x()))
@@ -1128,7 +1140,9 @@ class LayerLoader:
             k = 0
             for i, file in enumerate(layer_parameters.tmp_adjusted_spines_files):
                 if i not in layer_parameters.tmp_deleted_spines and file != "":
-                    surface_poly = Polyhedron_3(self._project_info.folder + file)
+                    surface_poly = Polyhedron_3(
+                        self._project_info.resolve_path(file, must_exist=True)
+                    )
                     for h in surface_poly.halfedges():
                         if h.is_border():
                             surface_poly.fill_hole(h)

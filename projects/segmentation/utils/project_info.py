@@ -32,7 +32,8 @@ class ProjectInfo:
         self.name: str = info[PDK.NAME.value]
         self.type: str = TYPE
         self.subtype: str = info.get(PDK.SUBTYPE.value, IMAGE)
-        self.folder: str = folder if folder else os.path.expanduser("~")
+        self.folder: str = os.path.abspath(folder if folder else os.path.expanduser("~"))
+        self.project_root: str = info.get(PDK.PROJECT_ROOT.value, "")
         self.original_image: str = info[PDK.ORIGINAL_IMAGE.value]
         self.shape: tuple = tuple(info[PDK.SHAPE.value])
         self.original_shape: tuple = tuple(
@@ -75,6 +76,7 @@ class ProjectInfo:
                 and s != PDK.BACKGROUND_IMAGES
                 and s != PDK.SUBTYPE
                 and s != PDK.MIN_COORDINATES
+                and s != PDK.PROJECT_ROOT
             ):
                 return False
         if project_info[PDK.TYPE.value] != TYPE:
@@ -119,7 +121,69 @@ class ProjectInfo:
 
     @property
     def filename(self) -> str:
-        return self.folder + "/" + ProjectInfo.DESCRIPTION_FILENAME
+        return os.path.join(self.folder, ProjectInfo.DESCRIPTION_FILENAME)
+
+    @staticmethod
+    def _is_absolute(path: str) -> bool:
+        drive, _ = os.path.splitdrive(path)
+        return bool(drive) or path.startswith("\\\\")
+
+    def resolve_path(self, path: str, must_exist: bool = False) -> str:
+        """Resolve a stored project path, preferring the current project root.
+
+        Relative paths (including the historic ``/layers/...`` form) are first
+        resolved beside project_description.json.  Existing absolute paths and
+        the root persisted by an older project are compatibility fallbacks.
+        """
+        if not path:
+            return ""
+        value = os.path.normpath(str(path))
+        candidates = []
+        if self._is_absolute(value):
+            if self.project_root:
+                try:
+                    relative = os.path.relpath(value, self.project_root)
+                    if relative != os.pardir and not relative.startswith(os.pardir + os.sep):
+                        candidates.append(os.path.join(self.folder, relative))
+                except ValueError:
+                    pass
+            candidates.append(value)
+        else:
+            relative = value.lstrip("/\\")
+            candidates.append(os.path.join(self.folder, relative))
+            if self.project_root:
+                candidates.append(os.path.join(self.project_root, relative))
+
+        for candidate in candidates:
+            absolute = os.path.abspath(candidate)
+            if not must_exist or os.path.exists(absolute):
+                return absolute
+        raise FileNotFoundError(
+            "Project file was not found: "
+            + str(path)
+            + ". Open project_description.json from its current location or specify "
+            "the path to project_description.json in the project settings."
+        )
+
+    def portable_path(self, path: str) -> str:
+        """Return a slash-normalized path relative to the current project root."""
+        if not path:
+            return ""
+        try:
+            absolute = self.resolve_path(path, must_exist=True)
+        except FileNotFoundError:
+            # Do not destroy the only recorded fallback when an artifact is
+            # temporarily unavailable (for example, an unplugged data drive).
+            if self._is_absolute(str(path)):
+                return os.path.normpath(str(path))
+            absolute = self.resolve_path(path)
+        try:
+            relative = os.path.relpath(absolute, self.folder)
+        except ValueError:
+            return absolute
+        if relative == os.pardir or relative.startswith(os.pardir + os.sep):
+            return absolute
+        return relative.replace("\\", "/")
 
     def as_dict(self) -> dict:
         non_editable_layers = []
@@ -127,7 +191,20 @@ class ProjectInfo:
             non_editable_layers.append(non_editable_layer.as_dict())
         layers_parameters = []
         for layer_parameters in self.layers_parameters.values():
-            layers_parameters.append(layer_parameters.as_dict())
+            values = layer_parameters.as_dict()
+            for key in (
+                LPK.FILE.value,
+                LPK.MESH_FILE.value,
+                LPK.MESH_SOURCE_TIF_FILE.value,
+            ):
+                values[key] = self.portable_path(values[key])
+            for key in (LPK.SPINES_FILES.value, LPK.ADJUSTED_SPINES_FILES.value):
+                values[key] = [self.portable_path(path) for path in values[key]]
+            values[LPK.ADDITIONAL_FILES.value] = {
+                name: self.portable_path(path)
+                for name, path in values[LPK.ADDITIONAL_FILES.value].items()
+            }
+            layers_parameters.append(values)
         return {
             PDK.NAME.value: self.name,
             PDK.TYPE.value: TYPE,
@@ -145,13 +222,15 @@ class ProjectInfo:
             PDK.NON_EDITABLE_LAYERS.value: non_editable_layers,
             PDK.BACKGROUND_IMAGES.value: self.background_images,
             PDK.DEVICE.value: self.device,
+            PDK.PROJECT_ROOT.value: self.folder,
         }
 
     def save(self) -> None:
-        filename = self.folder + "/" + ProjectInfo.DESCRIPTION_FILENAME
+        filename = os.path.join(self.folder, ProjectInfo.DESCRIPTION_FILENAME)
         file = open(filename, "w")
         dump(self.as_dict(), file)
         file.close()
+        self.project_root = self.folder
 
 
 class ProjectData:
@@ -290,3 +369,4 @@ class FinalSegmentationData:
         self.mesh_file = mesh_file
         self.mesh_v_f_vv = mesh_v_f_vv
         self.spines_files = spines_files
+        self.adjusted_spines_files = spines_files

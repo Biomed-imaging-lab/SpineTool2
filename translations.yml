@@ -630,6 +630,9 @@ translations:
   "final segmentation":
     en: "Final segmented mesh"
     ru: "Итоговый сегментированный меш"
+  "spine correction preview":
+    en: "Spine correction preview"
+    ru: "Предпросмотр коррекции шипиков"
 
   # layer controls widget
   "layer controls":

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 import numpy as np
+from scipy.ndimage import generate_binary_structure, label
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QFileDialog
 from tifffile import imread, imwrite
@@ -15,6 +16,7 @@ from projects.neural_segmentation.settings import NeuralSegmentationSettings
 from projects.neural_segmentation.utils.constants import (
     ARTIFACTS_PATH,
     CORRECTIONS_PATH,
+    FINAL_MESH_MIN_COMPONENT_SIZE_RATE,
     MODEL_RUNS_PATH,
     PLUGIN_RUNTIME_PATH,
     TYPE,
@@ -34,6 +36,11 @@ from projects.neural_segmentation.widgets.qt_voxel_preview_options import (
 from projects.neural_segmentation.widgets.qt_necks_preview_options import (
     QtNeuralNecksPreviewOptions,
 )
+from projects.neural_segmentation.widgets.qt_spine_mesh_preview_options import (
+    QtNeuralSpineMeshPreviewOptions,
+)
+from projects.neural_segmentation.utils.data_processing.finalize_spine_preview import finalize_spine_preview
+from projects.neural_segmentation.utils.data_processing.component_preview import build_component_preview
 from projects.neural_segmentation.widgets.qt_stage4_run_options import (
     QtStage4RunOptions,
 )
@@ -325,17 +332,60 @@ class NeuralSegmentationProject(SegmentationProject):
         if self._current_stage_id() < 4:
             return
         mesh_options = self._mesh_build_options.get_params()
-        metadata = {
-            "name": Translater.instance().get_translation("final segmentation"),
-            "parent_id": source_layer._id,
-            **mesh_options,
-        }
-        self._data_processing_task_queue.append(
-            DataProcessingTask(
-                Types.FINAL_SEGMENTATION,
-                build_final_segmentation,
+        source_data = source_layer._data
+        foreground = source_data > 0
+        labels = np.empty(source_data.shape, dtype=np.uint16)
+        try:
+            component_count = label(
+                foreground,
+                structure=generate_binary_structure(3, 3),
+                output=labels,
+            )
+        except RuntimeError:
+            labels = np.empty(source_data.shape, dtype=np.uint32)
+            component_count = label(
+                foreground,
+                structure=generate_binary_structure(3, 3),
+                output=labels,
+            )
+        del foreground
+        counts = np.bincount(labels.ravel())
+        min_size = max(
+            1,
+            int(
+                np.count_nonzero(source_data)
+                * FINAL_MESH_MIN_COMPONENT_SIZE_RATE
+            ),
+        )
+        component_ids = []
+        for component_id in range(1, component_count + 1):
+            if counts[component_id] < min_size:
+                continue
+            values = np.unique(source_data[labels == component_id])
+            if 1 in values and 2 in values:
+                component_ids.append(component_id)
+        del labels
+        if not component_ids:
+            show_error("No valid large connected components found")
+            return
+
+        for position, component_id in enumerate(component_ids, start=1):
+            suffix = f" {position}" if len(component_ids) > 1 else ""
+            metadata = {
+                "name": Translater.instance().get_translation(
+                    "spine correction preview"
+                ) + suffix,
+                "parent_id": source_layer._id,
+                "neural_spine_mesh_preview": True,
+                "neural_component_id": component_id,
+                "neural_component_count": len(component_ids),
+                **mesh_options,
+            }
+            self._data_processing_task_queue.append(DataProcessingTask(
+                Types.FINAL_SEGMENTATION, build_component_preview,
                 {
-                    "data": source_layer._data,
+                    "data": source_data,
+                    "component_id": component_id,
                     "shape": self._project_info.shape,
                     "scale": self._project_info.real_scale,
                     "min_coord": self._project_info.min_coordinates,
@@ -345,10 +395,9 @@ class NeuralSegmentationProject(SegmentationProject):
                     "queue_in": self._data_processing_communication_queue_out,
                     "queue_out": self._data_processing_communication_queue_in,
                 },
-                "final_segmentation in queue",
+                f"spine correction preview {position}/{len(component_ids)} in queue",
                 source_layer._id,
-            )
-        )
+            ))
 
     def _choose_file(self, caption: str, filter: str) -> str:
         dlg = QFileDialog(self._window._qt_window)
@@ -1368,6 +1417,29 @@ class NeuralSegmentationProject(SegmentationProject):
 
     def _set_preview_options(self) -> None:
         layer = self._viewer_model.active_layer
+        if layer and layer.metadata["type"] == Types.FINAL_SEGMENTATION:
+            layer_params = self._project_info.layers_parameters[layer._id]
+            if layer_params.tmp_metadata.get("neural_spine_mesh_preview", False):
+                delete = self._current_preview_options not in (
+                    self._empty_options, self._no_parameters
+                )
+                self._current_preview_options = QtNeuralSpineMeshPreviewOptions(
+                    layer, self._viewer_model.camera, self._project_info.folder,
+                    layer_params.tmp_additional_files["spines"],
+                    layer_params.tmp_deleted_spines, layer_params.tmp_metadata,
+                )
+                self._current_preview_options.parameters_fixed_.connect(
+                    self._fix_neural_spine_mesh_preview
+                )
+                self._current_preview_options.spine_deleted_.connect(self._on_spine_deleted)
+                self._current_preview_options.spine_restored_.connect(self._on_spine_restored)
+                self._current_preview_options.camera_policy_changed_.connect(self._on_camera_policy_changed)
+                self._current_preview_options.current_spine_changed_.connect(self._on_current_spine_changed)
+                self._preview_options_widget.replace_widget(
+                    self._current_preview_options, delete, Qt.AlignmentFlag.AlignTop
+                )
+                self._current_preview_options.ndisplay = self._viewer_model.dims.ndisplay
+                return
         if layer and layer.metadata["type"] == Types.NECKS:
             layer_params = self._project_info.layers_parameters[layer._id]
             if int(layer_params.tmp_metadata.get(NEURAL_STAGE_KEY, 0)) == 2:
@@ -1420,6 +1492,82 @@ class NeuralSegmentationProject(SegmentationProject):
             self._current_preview_options, delete, Qt.AlignmentFlag.AlignTop
         )
         self._current_preview_options.ndisplay = self._viewer_model.dims.ndisplay
+
+    def _fix_neural_spine_mesh_preview(self) -> None:
+        layer = self._viewer_model.active_layer
+        if layer is None:
+            return
+        params = self._project_info.layers_parameters[layer._id]
+        deleted = params.tmp_deleted_spines.copy()
+        original_spines_files = params.tmp_spines_files.copy()
+        kept_files = [
+            file for position, file in enumerate(original_spines_files)
+            if position not in deleted
+        ]
+        params.tmp_spines_files = kept_files
+        params.tmp_adjusted_spines_files = kept_files.copy()
+        params.tmp_deleted_spines = set()
+        metadata = {
+            "name": Translater.instance().get_translation("final segmentation"),
+            "parent_id": self._project_info.data.layers[layer._id].parent_id,
+            "mesh_complexity": params.tmp_metadata.get("mesh_complexity"),
+            "fill_holes_before_mesh": params.tmp_metadata.get(
+                "fill_holes_before_mesh"
+            ),
+        }
+        promotion_task = DataProcessingTask(
+            Types.FINAL_SEGMENTATION, finalize_spine_preview,
+            {
+                "mesh_v_f_vv": layer.data,
+                "mesh_file": params.tmp_mesh_file,
+                "spines_files": original_spines_files,
+                "spines_file": params.tmp_additional_files["spines"],
+                "deleted_spines": deleted,
+                "folder": self._project_info.folder,
+                "metadata": metadata,
+                "queue_in": self._data_processing_communication_queue_out,
+                "queue_out": self._data_processing_communication_queue_in,
+            },
+            "final segmentation in queue",
+            self._project_info.data.layers[layer._id].parent_id,
+            layer._id,
+        )
+        promotion_task._pre_promotion_file = params.tmp_file
+        self._data_processing_task_queue.append(promotion_task)
+
+    def _check_data_processing_communication_queue(self) -> None:
+        task = self._active_data_processing_task
+        promotion_layer_id = None
+        if task is not None and task.processor is finalize_spine_preview:
+            promotion_layer_id = task.layer_id
+
+        super()._check_data_processing_communication_queue()
+
+        if (
+            promotion_layer_id is None
+            or self._active_data_processing_task is task
+            or promotion_layer_id not in self._project_info.layers_parameters
+        ):
+            return
+
+        params = self._project_info.layers_parameters[promotion_layer_id]
+        if params.tmp_file == getattr(task, "_pre_promotion_file", params.tmp_file):
+            return
+        params.tmp_preview = False
+        params.preview = False
+        params.tmp_metadata.pop("neural_spine_mesh_preview", None)
+        params.metadata.pop("neural_spine_mesh_preview", None)
+        params.name = Translater.instance().get_translation("final segmentation")
+        promoted_layer = None
+        for candidate in self._next_stage_list:
+            if candidate._id == promotion_layer_id:
+                promoted_layer = candidate
+                break
+        if promoted_layer is not None:
+            promoted_layer.preview = False
+            promoted_layer.name = params.name
+            if promoted_layer == self._viewer_model.active_layer:
+                self._set_preview_options()
 
     def _refresh_labels_from_probability(
         self,
@@ -1576,6 +1724,10 @@ class NeuralSegmentationProject(SegmentationProject):
             params.get("layer_type") == Types.VOXEL_MESH_SEGMENTATION
             and stage_id in (3, 4)
         )
+        is_neural_mesh_preview = (
+            params.get("layer_type") == Types.FINAL_SEGMENTATION
+            and metadata.get("neural_spine_mesh_preview", False)
+        )
 
         super()._create()
 
@@ -1590,6 +1742,15 @@ class NeuralSegmentationProject(SegmentationProject):
             output_shape = tuple(data.shape) if hasattr(data, "shape") else None
             self._apply_neural_layer_scale(layer_id, output_shape)
 
+        if is_neural_mesh_preview:
+            layer_id = self._project_info.data.last_layer_id
+            layer_params = self._project_info.layers_parameters[layer_id]
+            layer_params.preview = True
+            layer_params.tmp_preview = True
+            for layer in self._next_stage_list:
+                if layer._id == layer_id:
+                    layer.preview = True
+                    break
         if not is_neural_voxel:
             return
         layer_id = self._project_info.data.last_layer_id

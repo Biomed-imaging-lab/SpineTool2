@@ -90,6 +90,7 @@ class ProjectDescriptionkKeys(StringEnum):
     LAYERS_PARAMETERS = auto()
     BACKGROUND_IMAGES = auto()
     DEVICE = auto()
+    PROJECT_ROOT = auto()
 
 
 class ProjectDataDescriptionkKeys(StringEnum):
@@ -155,7 +156,8 @@ EMPTY_PROJECT = {
     ProjectDescriptionkKeys.NON_EDITABLE_LAYERS.value: [],
     ProjectDescriptionkKeys.BACKGROUND_IMAGES.value: [],
     ProjectDescriptionkKeys.LAYERS_PARAMETERS.value: {},
-    ProjectDescriptionkKeys.DEVICE.value: "cpu"
+    ProjectDescriptionkKeys.DEVICE.value: "cpu",
+    ProjectDescriptionkKeys.PROJECT_ROOT.value: "",
 }
 
 

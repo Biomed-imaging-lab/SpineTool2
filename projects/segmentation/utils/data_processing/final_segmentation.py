@@ -3,7 +3,7 @@ from datetime import datetime
 from itertools import product
 from json import dump
 from multiprocessing import Lock, Process, Queue
-from time import sleep
+from queue import Empty
 
 import numpy as np
 import point_cloud_utils as pcu
@@ -13,13 +13,14 @@ from projects.segmentation.utils.data_processing.voxel_cleanup import (
     fill_small_enclosed_holes,
 )
 from projects.segmentation.utils.constants import DEFAULT_MESH_COMPLEXITY
-from scipy.ndimage import binary_dilation, binary_erosion, generate_binary_structure
+from scipy.ndimage import binary_dilation, binary_erosion, generate_binary_structure, label
 
 from CGAL.CGAL_Kernel import Point_3
 from CGAL.CGAL_Polyhedron_3 import Polyhedron_3
 from projects.segmentation.utils.constants import TMP_AUXILIARY_PATH, TMP_LAYERS_PATH
 from projects.segmentation.utils.data_processing.result import (
     CHECK_QUEUE_TIME_INTERVAL,
+    ProgressUpdate,
     Result,
 )
 from projects.segmentation.utils.data_processing.segmentation_utils import (
@@ -82,22 +83,69 @@ def _save_off(vertices: np.ndarray, facets: np.ndarray, file_name: str):
             f.write(f"3  {facets[i][0]} {facets[i][1]} {facets[i][2]}\n")
 
 
+def _extract_large_components(
+    data: np.ndarray, min_component_size_rate: float
+) -> tuple[np.ndarray, np.ndarray]:
+    """Keep large foreground islands and determine the shaft voxels in each island."""
+    component_labels, component_count = label(
+        data > 0, structure=generate_binary_structure(3, 3)
+    )
+    min_component_size = max(
+        1, int(np.prod(data.shape) * min_component_size_rate)
+    )
+    filtered = np.zeros_like(data)
+    shaft_mask = np.zeros(data.shape, dtype=bool)
+
+    for component_id in range(1, component_count + 1):
+        component_mask = component_labels == component_id
+        if np.count_nonzero(component_mask) < min_component_size:
+            continue
+        values, counts = np.unique(data[component_mask], return_counts=True)
+        nonzero = values != 0
+        values = values[nonzero]
+        counts = counts[nonzero]
+        if len(values) < 2:
+            continue
+        shaft_label = values[int(np.argmax(counts))]
+        filtered[component_mask] = data[component_mask]
+        shaft_mask[component_mask & (data == shaft_label)] = True
+
+    if not np.any(filtered):
+        raise ValueError("No valid large connected components found")
+    return filtered, shaft_mask
+
+
 def _reconstruct_surface(
     data: np.ndarray, shape: tuple, scale: list, min_coord: list, folder: str,
     queue: Queue, lock, mesh_complexity: str, fill_holes_before_mesh: bool,
+    min_component_size_rate: float | None,
+    progress_queue=None,
 ):
     try:
         with np.errstate(all="ignore"):
+            if progress_queue is not None:
+                progress_queue.put(ProgressUpdate(5, description="filter mesh components"))
             if fill_holes_before_mesh:
                 data = fill_small_enclosed_holes(data)
-            _, shaft_label = find_main_label(data, True)
+            if min_component_size_rate is None:
+                _, shaft_label = find_main_label(data, True)
+                shaft_mask = data == shaft_label
+            else:
+                data, shaft_mask = _extract_large_components(
+                    data, min_component_size_rate
+                )
 
+            if progress_queue is not None:
+                progress_queue.put(ProgressUpdate(20, description="build surface mesh"))
             data_ = np.zeros_like(data, dtype=np.uint8)
             data_[data > 0] = 1
             surface_poly, _ = voxel_to_mesh(
-                data_, shape, (1, 1, 1), folder, mesh_complexity
+                data_, shape, (1, 1, 1), folder, mesh_complexity,
+                keep_all_components=min_component_size_rate is not None,
             )
 
+            if progress_queue is not None:
+                progress_queue.put(ProgressUpdate(50, description="classify mesh vertices"))
             size = 3
             box_coords = list(
                 product(
@@ -131,7 +179,7 @@ def _reconstruct_surface(
                     len(
                         box[
                             np.array(
-                                data[box[:, 0], box[:, 1], box[:, 2]] == shaft_label
+                                shaft_mask[box[:, 0], box[:, 1], box[:, 2]]
                             )
                         ]
                     )
@@ -141,6 +189,8 @@ def _reconstruct_surface(
                 ):
                     segmentation.add(hash_point(v.point()))
 
+            if progress_queue is not None:
+                progress_queue.put(ProgressUpdate(65, description="split spine meshes"))
             spine_meshes = get_spine_meshes(surface_poly, segmentation)
 
             spines = {}
@@ -155,6 +205,8 @@ def _reconstruct_surface(
                     cur_spine_points.add(hash_point(p))
                 spines[i] = cur_spine_points
                 average.append(np.average(spine_vertices, axis=0).tolist())
+            if progress_queue is not None:
+                progress_queue.put(ProgressUpdate(80, description="prepare final mesh data"))
             mesh_v_f_vv, spines_indices = _segmenation_data_to_v_f_vv(
                 surface_poly, spines, shape, scale, min_coord
             )
@@ -197,6 +249,8 @@ def _reconstruct_surface(
                 + ".off"
             )
             lock.acquire()
+            if progress_queue is not None:
+                progress_queue.put(ProgressUpdate(95, description="write final mesh files"))
             surface_poly.write_to_file(folder + mesh_filename)
 
             for i, spine in enumerate(spine_meshes):
@@ -238,6 +292,7 @@ def build_final_segmentation(
     queue_out: Queue,
     mesh_complexity: str = DEFAULT_MESH_COMPLEXITY,
     fill_holes_before_mesh: bool = True,
+    min_component_size_rate: float | None = None,
 ):
     try:
         lock = Lock()
@@ -246,35 +301,47 @@ def build_final_segmentation(
             target=_reconstruct_surface,
             args=(
                 data, shape, scale, min_coord, folder, queue, lock,
-                mesh_complexity, fill_holes_before_mesh,
+                mesh_complexity, fill_holes_before_mesh, min_component_size_rate,
+                queue_out,
             ),
         )
         process.start()
 
-        sleep(CHECK_QUEUE_TIME_INTERVAL)
-        while queue.empty() and queue_in.empty():
-            sleep(CHECK_QUEUE_TIME_INTERVAL)
+        payload = None
+        stopped = False
+        while payload is None:
+            try:
+                queue_in.get_nowait()
+                stopped = True
+            except Empty:
+                pass
 
-        if not queue_in.empty():
-            queue_in.get()
-            lock.acquire()
-            process.terminate()
-            process.join()
-            lock.release()
-            if not queue.empty():
-                result, files, error = queue.get()
-                queue.close()
-                queue.join_thread()
-                queue_out.put(Result(result, metadata, False, files, error))
-                return
-            queue.close()
-            queue.join_thread()
+            if stopped:
+                lock.acquire()
+                process.terminate()
+                process.join()
+                lock.release()
+                break
+
+            try:
+                # Queue.empty() is not reliable across processes on Windows and
+                # can leave a completed child blocked while flushing a large mesh.
+                payload = queue.get(timeout=CHECK_QUEUE_TIME_INTERVAL)
+            except Empty:
+                if not process.is_alive():
+                    process.join()
+                    raise RuntimeError(
+                        "Final mesh worker exited without returning a result"
+                    )
+
+        queue.close()
+        queue.join_thread()
+        if stopped:
             queue_out.put(Result(FinalSegmentationData(), metadata, True))
-        else:
-            result, files, error = queue.get()
-            queue.close()
-            queue.join_thread()
-            process.join()
-            queue_out.put(Result(result, metadata, False, files, error))
+            return
+
+        result, files, error = payload
+        process.join()
+        queue_out.put(Result(result, metadata, False, files, error))
     except Exception as e:
         queue_out.put(Result(FinalSegmentationData(), metadata, error=str(e)))

@@ -133,16 +133,19 @@ def voxel_to_mesh(
     scale: list,
     folder: str,
     mesh_complexity: str = DEFAULT_MESH_COMPLEXITY,
+    keep_all_components: bool = False,
 ) -> tuple[Polyhedron_3, np.ndarray]:
     """returns surface_poly of mesh and updated voxel data"""
     data = np.asarray(data).copy()
     data[data > 0] = 1
-    labels, dendrite_label = find_main_label(data)
+    if keep_all_components:
+        mesh_base = data.astype(np.uint8, copy=False)
+    else:
+        labels, dendrite_label = find_main_label(data)
+        mesh_base = np.zeros_like(labels, dtype=np.uint8)
+        mesh_base[labels == dendrite_label] = 1
+        del labels
     del data
-
-    mesh_base = np.zeros_like(labels, dtype=np.uint8)
-    mesh_base[labels == dendrite_label] = 1
-    del labels
 
     # делаем erosion->dilation, но пересекаем его с исходной маской чтобы не уменьшать объект
     mesh_base = (binary_dilation(
@@ -184,7 +187,7 @@ def voxel_to_mesh(
     cf = np.asarray(cf).reshape(-1)
     nf = np.asarray(nf).reshape(-1)
 
-    if nf.size > 0:
+    if nf.size > 0 and not keep_all_components:
         comp_max = int(np.argmax(nf))
         total_faces = int(np.sum(nf))
         max_faces = int(nf[comp_max])
