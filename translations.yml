@@ -738,6 +738,9 @@ translations:
   "edge color":
     en: "Edge color:"
     ru: "Цвет границ:"
+  "show mesh edges":
+    en: "Show mesh edges:"
+    ru: "Показывать рёбра меша:"
   "out of slice":
     en: "Out of slice:"
     ru: "Точки вне среза:"

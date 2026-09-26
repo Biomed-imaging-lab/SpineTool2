@@ -97,6 +97,8 @@ class LayerParametersTracker:
             parameters["gamma"] = layer.gamma
             parameters["opacity"] = layer.opacity
             parameters["shading"] = layer.shading
+            parameters["show_edges"] = layer.show_edges
+            parameters["edge_color"] = layer.edge_color.tolist()
             parameters["visible"] = layer.visible
 
         layer_parameters = self._project_info.layers_parameters.get(layer._id)
@@ -166,6 +168,12 @@ class LayerParametersTracker:
             layer.gamma_.connect(partial(self._on_layer_parameters_changed, layer))
             layer.opacity_.connect(partial(self._on_layer_parameters_changed, layer))
             layer.shading_.connect(partial(self._on_layer_parameters_changed, layer))
+            layer.show_edges_.connect(
+                partial(self._on_layer_parameters_changed, layer)
+            )
+            layer.edge_color_.connect(
+                partial(self._on_layer_parameters_changed, layer)
+            )
             layer.visible_.connect(partial(self._on_layer_parameters_changed, layer))
 
     def _save_colormap(
