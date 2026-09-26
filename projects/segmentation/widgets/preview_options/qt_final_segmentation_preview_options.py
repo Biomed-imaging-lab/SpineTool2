@@ -1,3 +1,4 @@
+import os
 from json import load
 
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -32,7 +33,14 @@ class QtFinalSegmentationPreviewOptions(QtPreviewOptions):
         self._layer = layer
         self._camera = camera
         self._prev_spine_points = []
-        with open(folder + spines_file) as f:
+        drive, _ = os.path.splitdrive(spines_file)
+        if drive or spines_file.startswith("\\\\"):
+            resolved_spines_file = spines_file
+        else:
+            resolved_spines_file = os.path.join(
+                folder, spines_file.lstrip("/\\")
+            )
+        with open(resolved_spines_file) as f:
             self._spines = load(f)
 
         if len(self._spines["spines"]) > 0:

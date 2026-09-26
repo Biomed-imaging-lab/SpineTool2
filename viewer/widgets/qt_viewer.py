@@ -10,6 +10,7 @@ from utils.themes import color_as_hex, get_theme
 from viewer.components._viewer_constants import CursorStyle
 from viewer.components.overlays.base import Overlay
 from viewer.components.overlays.brush_circle import BrushCircleOverlay
+from viewer.components.overlays.scale_bar import ScaleBarOverlay
 from viewer.layers.base.base import Layer
 from viewer.utils.utils import (
     ReadOnlyWrapper,
@@ -21,7 +22,6 @@ from viewer.vispy.camera import VispyCamera
 from viewer.vispy.canvas import VispyCanvas
 from viewer.vispy.utils.visual import create_vispy_layer, create_vispy_overlay
 from viewer.widgets.qt_dims import QtDims
-from viewer.widgets.qt_scale_bar import QtScaleBar
 from viewer.widgets.qt_viewer_central_widget import QtViewerCentralWidget
 
 if TYPE_CHECKING:
@@ -57,8 +57,6 @@ class QtViewer(QSplitter):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 2, 0, 2)
         main_layout.addWidget(self._central_widget)
-        self.scale_bar = QtScaleBar(self.viewer, main_widget)
-        main_layout.addWidget(self.scale_bar)
         main_layout.addWidget(self.dims)
         main_layout.setSpacing(0)
         main_widget.setLayout(main_layout)
@@ -87,6 +85,7 @@ class QtViewer(QSplitter):
         for layer in self.viewer.layers:
             self._add_layer(layer)
         self._add_overlay(self.viewer.brush_circle)
+        self._add_overlay(self.viewer.scale_bar)
 
     def _leave_canvas(self):
         self.viewer.status = {"text": ""}
@@ -102,7 +101,6 @@ class QtViewer(QSplitter):
 
     def set_theme(self, theme_id: str) -> None:
         self.canvas._on_theme_change(theme_id)
-        self.scale_bar.set_theme(theme_id)
 
     def _create_canvas(self) -> None:
         self.canvas = VispyCanvas(
@@ -133,7 +131,7 @@ class QtViewer(QSplitter):
     def _add_overlay(self, overlay: Overlay) -> None:
         vispy_overlay = create_vispy_overlay(overlay, viewer=self.viewer)
 
-        if isinstance(overlay, BrushCircleOverlay):
+        if isinstance(overlay, (BrushCircleOverlay, ScaleBarOverlay)):
             vispy_overlay.node.parent = self.view
 
         self.overlay_to_visual[overlay] = vispy_overlay
@@ -230,8 +228,6 @@ class QtViewer(QSplitter):
 
     def on_resize(self, event):
         self.viewer.canvas_size = tuple(self.canvas.size[::-1])
-        if hasattr(self, "scale_bar"):
-            self.scale_bar.update()
 
     def _process_mouse_event(self, event) -> Any:
         if event.pos is None:

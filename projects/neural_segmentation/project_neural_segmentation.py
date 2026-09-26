@@ -94,7 +94,7 @@ NEURAL_STAGE_LABELS = {
     1: "binarization",
     2: "neck restoration",
     3: "scale restoration",
-    4: "stem/spines segmentation",
+    4: "shaft/spines segmentation",
 }
 
 
@@ -312,7 +312,7 @@ class NeuralSegmentationProject(SegmentationProject):
                 )
             else:
                 self._qt_next_stage_list.create_new_button.setText(
-                    "run model: stem/spines segmentation"
+                    "run model: shaft/spines segmentation"
                 )
                 self._qt_next_stage_list.create_new_button.clicked.connect(
                     self._create_new_stem_spines_segmentation
@@ -1398,7 +1398,7 @@ class NeuralSegmentationProject(SegmentationProject):
         self._enqueue_neural_inference_task(
             layer_type=Types.VOXEL_MESH_SEGMENTATION,
             parent_id=stage3_layer_id,
-            layer_name="stem and spines",
+            layer_name="shaft and spines",
             plugin_runtime=plugin_runtime,
             stage_id=4,
             request=request,

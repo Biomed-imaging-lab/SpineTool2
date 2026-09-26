@@ -4,6 +4,7 @@ from typing import List
 
 from viewer.components.overlays.base import Overlay
 from viewer.components.overlays.brush_circle import BrushCircleOverlay
+from viewer.components.overlays.scale_bar import ScaleBarOverlay
 from viewer.layers.base.base import Layer
 from viewer.layers.image.image import Image
 from viewer.layers.labels.labels import Labels
@@ -16,6 +17,7 @@ from viewer.vispy.layers.points import VispyPointsLayer
 from viewer.vispy.layers.surface import VispySurfaceLayer
 from viewer.vispy.overlays.base import VispyBaseOverlay
 from viewer.vispy.overlays.brush_circle import VispyBrushCircleOverlay
+from viewer.vispy.overlays.scale_bar import VispyScaleBarOverlay
 
 layer_to_visual = {
     Image: VispyImageLayer,
@@ -27,6 +29,7 @@ layer_to_visual = {
 
 overlay_to_visual = {
     BrushCircleOverlay: VispyBrushCircleOverlay,
+    ScaleBarOverlay: VispyScaleBarOverlay,
 }
 
 
