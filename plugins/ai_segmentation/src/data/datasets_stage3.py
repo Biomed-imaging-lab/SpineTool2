@@ -53,12 +53,13 @@ class Stage3InferenceDataset(Dataset):
 
 		# 1. Загрузка
 		raw_img = imread(tiff_path).astype(np.float32)
+		self.area_mask = None
 
 		if area_path and os.path.exists(area_path):
-			area = imread(area_path).astype(np.float32)
-			area[area > 0] = 1.0
+			area = imread(area_path)
 			if raw_img.shape == area.shape:
-				raw_img = raw_img * area
+				self.area_mask = area > 0
+				raw_img = raw_img * self.area_mask
 			else:
 				print(f"Shape mismatch {raw_img.shape} vs {area.shape}")
 
@@ -95,9 +96,18 @@ class Stage3InferenceDataset(Dataset):
 		z_steps = range(0, self.shape[0], self.stride[0])
 		y_steps = range(0, self.shape[1], self.stride[1])
 		x_steps = range(0, self.shape[2], self.stride[2])
+		dz, dy, dx = self.patch_size
 		for z in z_steps:
 			for y in y_steps:
 				for x in x_steps:
+					if self.area_mask is not None:
+						area_patch = self.area_mask[
+							z:min(z + dz, self.shape[0]),
+							y:min(y + dy, self.shape[1]),
+							x:min(x + dx, self.shape[2]),
+						]
+						if not np.any(area_patch):
+							continue
 					coords.append((z, y, x))
 		return coords
 

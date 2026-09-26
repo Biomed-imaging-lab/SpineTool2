@@ -5,6 +5,7 @@ import numpy as np
 from PyQt5.QtCore import pyqtSignal
 
 from utils.colormaps.colormap_utils import AVAILABLE_COLORMAPS_NAMES
+from utils.colormaps.standardize_color import transform_color
 from viewer.layers.base.base import Layer
 from viewer.layers.intensity_mixin import IntensityVisualizationMixin
 from viewer.layers.surface._surface_constants import Shading
@@ -35,6 +36,8 @@ class Surface(IntensityVisualizationMixin, Layer):
     gamma_ = pyqtSignal()
     colormap_ = pyqtSignal()
     shading_ = pyqtSignal(object)
+    show_edges_ = pyqtSignal(bool)
+    edge_color_ = pyqtSignal(object)
     texture_ = pyqtSignal(object)
     texcoords_ = pyqtSignal(object)
     changed_ = pyqtSignal(bool)
@@ -53,6 +56,8 @@ class Surface(IntensityVisualizationMixin, Layer):
         opacity=1,
         blending="translucent",
         shading="flat",
+        show_edges=False,
+        edge_color="black",
         visible=True,
         texture=None,
         texcoords=None,
@@ -117,6 +122,8 @@ class Surface(IntensityVisualizationMixin, Layer):
 
         # Shading mode
         self._shading = shading
+        self._show_edges = bool(show_edges)
+        self._edge_color = transform_color(edge_color)[0]
 
     def _calc_data_range(self, mode="data"):
         return calc_data_range(self.vertex_values)
@@ -227,6 +234,24 @@ class Surface(IntensityVisualizationMixin, Layer):
         else:
             self._shading = Shading(shading)
         self.shading_.emit(self._shading)
+
+    @property
+    def show_edges(self) -> bool:
+        return self._show_edges
+
+    @show_edges.setter
+    def show_edges(self, value: bool) -> None:
+        self._show_edges = bool(value)
+        self.show_edges_.emit(self._show_edges)
+
+    @property
+    def edge_color(self) -> np.ndarray:
+        return self._edge_color
+
+    @edge_color.setter
+    def edge_color(self, value) -> None:
+        self._edge_color = transform_color(value)[0]
+        self.edge_color_.emit(self._edge_color)
 
     @property
     def texture(self) -> Optional[np.ndarray]:

@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import inspect
 import json
 import os
@@ -7,11 +8,13 @@ import traceback
 from typing import Any
 
 import numpy as np
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "max_split_size_mb:128")
 import torch
 from tifffile import imread, imwrite
 
 
 PROGRESS_PREFIX = "SPINETOOL_PROGRESS "
+STAGE4_PREPROCESS_CACHE_VERSION = 2
 
 
 def _write_json(path: str, payload: dict[str, Any]) -> None:
@@ -23,6 +26,69 @@ def _write_json(path: str, payload: dict[str, Any]) -> None:
 def _read_json(path: str) -> dict[str, Any]:
     with open(path, "r", encoding="utf-8") as file:
         return json.load(file)
+
+
+def _array_digest(array: np.ndarray) -> str:
+    """Hash an array without allocating a second full-volume byte string."""
+    contiguous = np.ascontiguousarray(array)
+    digest = hashlib.sha256()
+    digest.update(str(contiguous.shape).encode("ascii"))
+    digest.update(contiguous.dtype.str.encode("ascii"))
+    digest.update(memoryview(contiguous).cast("B"))
+    return digest.hexdigest()
+
+
+def _preprocess_implementation_digest(functions: tuple[Any, ...]) -> str:
+    digest = hashlib.sha256()
+    for function in functions:
+        source_path = inspect.getsourcefile(function)
+        if source_path is None:
+            identity = function.__module__ + "." + function.__qualname__
+            digest.update(identity.encode("utf-8"))
+            continue
+        with open(source_path, "rb") as source_file:
+            for chunk in iter(lambda: source_file.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _artifacts_exist(paths: list[str]) -> bool:
+    return all(os.path.isfile(path) and os.path.getsize(path) > 0 for path in paths)
+
+
+def _remove_artifacts(paths: list[str]) -> None:
+    for path in paths:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+
+
+def _read_binary_artifact(path: str, expected_shape: tuple[int, ...]) -> np.ndarray:
+    array = imread(path)
+    if tuple(array.shape) != expected_shape:
+        raise RuntimeError(
+            "Stage 4 artifact shape mismatch for " + path + ": expected "
+            + str(expected_shape) + ", got " + str(tuple(array.shape))
+        )
+    return array > 0
+
+
+def _validate_distance_artifact(
+    path: str, expected_shape: tuple[int, ...], foreground: np.ndarray
+) -> None:
+    array = imread(path)
+    if tuple(array.shape) != expected_shape:
+        raise RuntimeError("Stage 4 distance artifact has an invalid shape: " + path)
+    if not np.all(np.isfinite(array)):
+        raise RuntimeError("Stage 4 distance artifact contains NaN/Inf: " + path)
+    if np.any(array < 0) or np.any(array > 1):
+        raise RuntimeError("Stage 4 distance artifact is outside [0, 1]: " + path)
+    values = array[foreground]
+    if values.size and np.all(values == values[0]):
+        raise RuntimeError(
+            "Stage 4 distance artifact is constant inside the dendrite mask: " + path
+        )
 
 
 def _emit_progress(
@@ -48,6 +114,45 @@ def _required(request: dict[str, Any], key: str) -> Any:
     if key not in request:
         raise KeyError("Missing required key in request: " + key)
     return request[key]
+
+
+def _resolve_project_path(
+    request: dict[str, Any], key: str, *, must_exist: bool = True
+) -> str:
+    value = str(_required(request, key))
+    drive, _ = os.path.splitdrive(value)
+    is_external_absolute = bool(drive) or value.startswith("\\\\")
+    if is_external_absolute and (not must_exist or os.path.exists(value)):
+        return os.path.normpath(value)
+
+    project_root = str(request.get("project_root", ""))
+    if project_root:
+        rooted = os.path.normpath(
+            os.path.join(project_root, value.lstrip("/\\"))
+        )
+        if not must_exist or os.path.exists(rooted):
+            return rooted
+
+    normalized = os.path.abspath(value)
+    if must_exist and not os.path.exists(normalized):
+        raise FileNotFoundError(
+            "Project artifact was not found for " + key + ": " + value
+        )
+    return normalized
+
+
+def _portable_project_path(path: str, project_root: str) -> str:
+    if not project_root:
+        return path
+    absolute_path = os.path.abspath(path)
+    absolute_root = os.path.abspath(project_root)
+    try:
+        common_root = os.path.commonpath([absolute_path, absolute_root])
+        if os.path.normcase(common_root) == os.path.normcase(absolute_root):
+            return os.path.relpath(absolute_path, absolute_root).replace("\\", "/")
+    except ValueError:
+        pass
+    return absolute_path
 
 
 def _normalize_probability(probability: np.ndarray) -> np.ndarray:
@@ -98,16 +203,24 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
     )
 
     _emit_progress(6, "stage 4: read user-approved stage 3 mask")
-    stage3_mask_path = _required(request, "stage3_mask_path")
+    stage3_mask_path = _resolve_project_path(request, "stage3_mask_path")
     mask = (imread(stage3_mask_path) > 0).astype(np.uint8)
 
-    area_path = request.get("area_path")
+    area_path = None
+    if request.get("area_path"):
+        area_path = _resolve_project_path(request, "area_path")
     if isinstance(area_path, str) and area_path != "" and os.path.isfile(area_path):
         area = (imread(area_path) > 0).astype(np.uint8)
         if area.shape == mask.shape:
             mask = mask * area
+    if not np.any(mask):
+        raise RuntimeError("The user-approved stage 3 mask is empty")
 
-    prepare_dir = _required(request, "stage4_prepare_dir")
+    prepare_dir = _resolve_project_path(
+        request, "stage4_prepare_dir", must_exist=False
+    )
+    project_root = str(request.get("project_root", ""))
+    preprocess_base_path = project_root or ""
     os.makedirs(prepare_dir, exist_ok=True)
     mask_path = os.path.join(prepare_dir, "stage3_binary_mask.tif")
     skeleton_path = os.path.join(prepare_dir, "skeleton.tif")
@@ -116,28 +229,76 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
     spine_vsot_path = os.path.join(prepare_dir, "spine_vsot.tif")
     shaft_dist_path = os.path.join(prepare_dir, "shaft_dist.tif")
     spine_dist_path = os.path.join(prepare_dir, "spine_dist.tif")
-    imwrite(mask_path, mask.astype(np.uint8))
+    cache_path = os.path.join(prepare_dir, "preprocess_cache.json")
 
     current_scale = list(_required(request, "current_scale"))
-    skeleton_item = {
-        "name": "stage4_item",
-        "stage3_mask": mask_path,
-        "image": mask_path,
-        "shaft_mask": mask_path,
-        "skeleton": skeleton_path,
-        "segments_mask": segments_path,
-        "scale": current_scale,
-        "skeleton_prune_length_nm": float(
-            request.get("skeleton_prune_length_nm", 1000)
+    prune_length_nm = float(request.get("skeleton_prune_length_nm", 1000))
+    skeleton_cache_key = {
+        "version": STAGE4_PREPROCESS_CACHE_VERSION,
+        "mask_sha256": _array_digest(mask),
+        "scale": [float(value) for value in current_scale],
+        "skeleton_prune_length_nm": prune_length_nm,
+        "implementation_sha256": _preprocess_implementation_digest((scelete,)),
+    }
+    vsot_cache_key = {
+        "skeleton": skeleton_cache_key,
+        "implementation_sha256": _preprocess_implementation_digest(
+            (run_vsot_oct2py,)
+        ),
+        "vsot_root": os.path.normcase(
+            os.path.abspath(_required(request, "vsot_root"))
+        ),
+        "vsot_matlab_dir": os.path.normcase(
+            os.path.abspath(_required(request, "vsot_matlab_dir"))
         ),
     }
+    distance_cache_key = {
+        "vsot": vsot_cache_key,
+        "implementation_sha256": _preprocess_implementation_digest(
+            (build_distance_maps,)
+        ),
+    }
+    cached = {}
+    if os.path.isfile(cache_path):
+        try:
+            cached = _read_json(cache_path)
+        except (OSError, ValueError, TypeError):
+            cached = {}
+
+    skeleton_cache_hit = (
+        cached.get("skeleton") == skeleton_cache_key
+        and _artifacts_exist([mask_path, skeleton_path, segments_path])
+    )
+    if not skeleton_cache_hit:
+        _remove_artifacts([skeleton_path, segments_path])
+        imwrite(mask_path, mask, photometric="minisblack")
+
+    skeleton_item = {
+        "name": "stage4_item",
+        "stage3_mask": _portable_project_path(mask_path, project_root),
+        "image": _portable_project_path(mask_path, project_root),
+        "shaft_mask": _portable_project_path(mask_path, project_root),
+        "skeleton": _portable_project_path(skeleton_path, project_root),
+        "segments_mask": _portable_project_path(segments_path, project_root),
+        "scale": current_scale,
+        "skeleton_prune_length_nm": prune_length_nm,
+    }
     if isinstance(area_path, str) and area_path != "":
-        skeleton_item["area_of_interest"] = area_path
+        skeleton_item["area_of_interest"] = _portable_project_path(
+            area_path, project_root
+        )
 
     skeleton_json_path = os.path.join(prepare_dir, "stage4_skeleton_request.json")
     _write_json(skeleton_json_path, {"data": [skeleton_item]})
-    _emit_progress(15, "stage 4: build dendrite skeleton")
-    scelete(skeleton_json_path, base_path="", do_segmentation=True)
+    if skeleton_cache_hit:
+        _emit_progress(25, "stage 4: reuse cached dendrite skeleton")
+    else:
+        _emit_progress(15, "stage 4: build dendrite skeleton")
+        scelete(
+            skeleton_json_path,
+            base_path=preprocess_base_path,
+            do_segmentation=True,
+        )
 
     if not os.path.isfile(skeleton_path) or not os.path.isfile(segments_path):
         raise RuntimeError(
@@ -146,6 +307,13 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
             + ", "
             + segments_path
         )
+    expected_shape = tuple(mask.shape)
+    skeleton = _read_binary_artifact(skeleton_path, expected_shape)
+    if not np.any(skeleton):
+        raise RuntimeError("Stage 4 skeletonization produced an empty skeleton")
+    segments = imread(segments_path)
+    if tuple(segments.shape) != expected_shape or not np.any(segments):
+        raise RuntimeError("Stage 4 skeletonization produced an empty segment map")
 
     vsot_json_path = os.path.join(prepare_dir, "stage4_vsot_request.json")
     _write_json(
@@ -154,31 +322,53 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
             "data": [
                 {
                     "name": "stage4_item",
-                    "general_mask": mask_path,
-                    "skeleton": skeleton_path,
-                    "segments_mask": segments_path,
-                    "shaft_vsot": shaft_vsot_path,
-                    "spine_vsot": spine_vsot_path,
+                    "general_mask": _portable_project_path(mask_path, project_root),
+                    "skeleton": _portable_project_path(skeleton_path, project_root),
+                    "segments_mask": _portable_project_path(
+                        segments_path, project_root
+                    ),
+                    "shaft_vsot": _portable_project_path(
+                        shaft_vsot_path, project_root
+                    ),
+                    "spine_vsot": _portable_project_path(
+                        spine_vsot_path, project_root
+                    ),
                     "scale": current_scale,
                 }
             ]
         },
     )
 
-    run_vsot_signature = inspect.signature(run_vsot_oct2py)
-    _emit_progress(30, "stage 4: run VSOT preprocessing")
-    if "vsot_root" not in run_vsot_signature.parameters:
-        raise RuntimeError(
-            "The configured AI runtime is outdated: stage4_vsot.run_vsot_oct2py "
-            "does not accept vsot_root"
-        )
-    run_vsot_oct2py(
-        vsot_json_path,
-        _required(request, "vsot_matlab_dir"),
-        base_path="",
-        vsot_root=_required(request, "vsot_root"),
+    vsot_cache_hit = (
+        skeleton_cache_hit
+        and cached.get("vsot") == vsot_cache_key
+        and _artifacts_exist([shaft_vsot_path, spine_vsot_path])
     )
-    _emit_progress(45, "stage 4: VSOT preprocessing finished")
+    if vsot_cache_hit:
+        _emit_progress(45, "stage 4: reuse cached VSOT preprocessing")
+    else:
+        _remove_artifacts([shaft_vsot_path, spine_vsot_path])
+        run_vsot_signature = inspect.signature(run_vsot_oct2py)
+        _emit_progress(30, "stage 4: run VSOT preprocessing")
+        if "vsot_root" not in run_vsot_signature.parameters:
+            raise RuntimeError(
+                "The configured AI runtime is outdated: "
+                "stage4_vsot.run_vsot_oct2py does not accept vsot_root"
+            )
+        run_vsot_oct2py(
+            vsot_json_path,
+            _required(request, "vsot_matlab_dir"),
+            base_path=preprocess_base_path,
+            vsot_root=_required(request, "vsot_root"),
+        )
+        # oct2py uses a process-wide session; release before model inference so the external runner can terminate
+        try:
+            from oct2py import octave
+
+            octave.exit()
+        except Exception:
+            pass
+        _emit_progress(45, "stage 4: VSOT preprocessing finished")
 
     if not os.path.isfile(shaft_vsot_path) or not os.path.isfile(spine_vsot_path):
         raise RuntimeError(
@@ -187,21 +377,37 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
             + ", "
             + spine_vsot_path
         )
+    shaft_vsot = _read_binary_artifact(shaft_vsot_path, expected_shape)
+    spine_vsot = _read_binary_artifact(spine_vsot_path, expected_shape)
+    foreground = mask > 0
+    if np.any(shaft_vsot & spine_vsot):
+        raise RuntimeError("VSOT shaft and spine masks overlap")
+    if not np.array_equal(shaft_vsot | spine_vsot, foreground):
+        raise RuntimeError("VSOT masks do not partition the stage 3 foreground")
 
     distance_json_path = os.path.join(prepare_dir, "stage4_distance_request.json")
     distance_item = {
         "name": "stage4_item",
-        "skeleton": skeleton_path,
-        "shaft_vsot": shaft_vsot_path,
-        "spine_vsot": spine_vsot_path,
-        "shaft_dist": shaft_dist_path,
-        "spine_dist": spine_dist_path,
+        "skeleton": _portable_project_path(skeleton_path, project_root),
+        "shaft_vsot": _portable_project_path(shaft_vsot_path, project_root),
+        "spine_vsot": _portable_project_path(spine_vsot_path, project_root),
+        "shaft_dist": _portable_project_path(shaft_dist_path, project_root),
+        "spine_dist": _portable_project_path(spine_dist_path, project_root),
         "scale": current_scale,
     }
     _write_json(distance_json_path, {"data": [distance_item]})
-    _emit_progress(46, "stage 4: build distance channels")
-    build_distance_maps(distance_item, base_path="")
-    _emit_progress(52, "stage 4: distance channels finished")
+    distance_cache_hit = (
+        vsot_cache_hit
+        and cached.get("distance") == distance_cache_key
+        and _artifacts_exist([shaft_dist_path, spine_dist_path])
+    )
+    if distance_cache_hit:
+        _emit_progress(52, "stage 4: reuse cached distance channels")
+    else:
+        _remove_artifacts([shaft_dist_path, spine_dist_path])
+        _emit_progress(46, "stage 4: build distance channels")
+        build_distance_maps(distance_item, base_path=preprocess_base_path)
+        _emit_progress(52, "stage 4: distance channels finished")
 
     if not os.path.isfile(shaft_dist_path) or not os.path.isfile(spine_dist_path):
         raise RuntimeError(
@@ -210,9 +416,22 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
             + ", "
             + spine_dist_path
         )
+    _validate_distance_artifact(shaft_dist_path, expected_shape, foreground)
+    _validate_distance_artifact(spine_dist_path, expected_shape, foreground)
+
+    if not distance_cache_hit:
+        _write_json(
+            cache_path,
+            {
+                "skeleton": skeleton_cache_key,
+                "vsot": vsot_cache_key,
+                "distance": distance_cache_key,
+            },
+        )
 
     return {
         "mask_source": stage3_mask_path,
+        "area_path": area_path,
         "mask_path": mask_path,
         "skeleton_path": skeleton_path,
         "segments_mask_path": segments_path,
@@ -233,6 +452,34 @@ def _model_output_channels(model) -> int:
         return 1
 
 
+def _effective_patch_geometry(
+    requested_patch: list[int],
+    requested_overlap: list[int],
+    device: str,
+) -> tuple[list[int], list[int]]:
+    """Fit stage 4 inference to small GPUs while retaining overlap ratios."""
+    patch = [int(value) for value in requested_patch]
+    overlap = [int(value) for value in requested_overlap]
+    if len(patch) != 3 or len(overlap) != 3 or any(value <= 0 for value in patch):
+        raise ValueError("Stage 4 patch_size and overlap must contain three values")
+
+    if device.startswith("cuda"):
+        total_memory = torch.cuda.get_device_properties(device).total_memory
+        if total_memory <= 8 * 1024**3:
+            safe_patch = [32, 96, 96]
+            ratios = [
+                min(max(overlap_value / patch_value, 0.0), 0.9)
+                for overlap_value, patch_value in zip(overlap, patch)
+            ]
+            patch = [min(value, limit) for value, limit in zip(patch, safe_patch)]
+            overlap = [
+                min(int(round(value * ratio)), value - 1)
+                for value, ratio in zip(patch, ratios)
+            ]
+    overlap = [min(max(value, 0), size - 1) for value, size in zip(overlap, patch)]
+    return patch, overlap
+
+
 def _predict_and_stitch_on_the_fly(
     model,
     datamodule,
@@ -242,13 +489,8 @@ def _predict_and_stitch_on_the_fly(
     dl = datamodule.predict_dataloader()
     original_shape = datamodule.predict_ds.shape
     use_cuda = device.startswith("cuda")
-    accumulator_device = torch.device(device if use_cuda else "cpu")
     full = None
-    counts = torch.zeros(
-        original_shape,
-        dtype=torch.float32,
-        device=accumulator_device,
-    )
+    counts = np.zeros(original_shape, dtype=np.uint16)
     try:
         total_batches = len(dl)
     except Exception:
@@ -273,7 +515,7 @@ def _predict_and_stitch_on_the_fly(
                 counts[z : z + vz, y : y + vy, x : x + vx] += 1
 
             if active_indices:
-                images = images_cpu[nonzero_mask].to(device)
+                images = images_cpu[nonzero_mask].to(device, non_blocking=use_cuda)
                 with torch.autocast(
                     device_type="cuda",
                     dtype=torch.float16,
@@ -287,24 +529,24 @@ def _predict_and_stitch_on_the_fly(
                         if channel_count == 1
                         else (channel_count, *original_shape)
                     )
-                    full = torch.zeros(
-                        full_shape,
-                        dtype=torch.float32,
-                        device=accumulator_device,
-                    )
+                    full = np.zeros(full_shape, dtype=np.float32)
+
+                predictions_cpu = predictions.float().cpu().numpy()
+                del predictions, images
 
                 for prediction_idx, batch_idx in enumerate(active_indices):
                     z, y, x = coords[batch_idx]
                     vz, vy, vx = valid_shapes[batch_idx]
-                    prediction = predictions[prediction_idx]
+                    prediction = predictions_cpu[prediction_idx]
                     if channel_count == 1:
                         full[z : z + vz, y : y + vy, x : x + vx] += prediction[
                             0, :vz, :vy, :vx
-                        ].float()
+                        ]
                     else:
                         full[:, z : z + vz, y : y + vy, x : x + vx] += prediction[
                             :, :vz, :vy, :vx
-                        ].float()
+                        ]
+                del predictions_cpu
             if total_batches > 0:
                 value = 62 + int(30 * batch_index / total_batches)
                 if value != last_value:
@@ -319,7 +561,7 @@ def _predict_and_stitch_on_the_fly(
                     )
                     last_value = value
 
-    counts.clamp_min_(1)
+    np.maximum(counts, 1, out=counts)
     if full is None:
         channel_count = _model_output_channels(model)
         empty_shape = (
@@ -329,10 +571,10 @@ def _predict_and_stitch_on_the_fly(
         )
         return np.zeros(empty_shape, dtype=np.float32)
     if full.ndim == 3:
-        probability = full / counts
+        full /= counts
     else:
-        probability = full / counts[None, :, :, :]
-    return probability.cpu().numpy()
+        full /= counts[None, :, :, :]
+    return full
 
 
 def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
@@ -347,6 +589,11 @@ def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
     prepared = _prepare_stage4_inputs(request)
     _emit_progress(54, "stage 4: resolve device")
     device = _resolve_device(request.get("device", "auto"))
+    patch_size, overlap = _effective_patch_geometry(
+        request.get("patch_size", [64, 128, 128]),
+        request.get("overlap", [48, 96, 96]),
+        device,
+    )
 
     _emit_progress(56, "stage 4: prepare model input")
     datamodule = Stage4DataModule(
@@ -354,11 +601,11 @@ def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
         vsot_spine_path=prepared["vsot_spine_path"],
         shaft_dist_path=prepared["shaft_dist_path"],
         spine_dist_path=prepared["spine_dist_path"],
-        area_path=request.get("area_path"),
+        area_path=prepared["area_path"],
         batch_size=int(request.get("batch_size", 1)),
-        num_workers=int(request.get("num_workers", 1)),
-        patch_size=request.get("patch_size", [64, 128, 128]),
-        overlap=request.get("overlap", [48, 96, 96]),
+        num_workers=int(request.get("num_workers", 0)),
+        patch_size=patch_size,
+        overlap=overlap,
     )
     datamodule.setup("predict")
     expected_shape = tuple(imread(prepared["mask_path"]).shape)
@@ -376,6 +623,10 @@ def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
     )
     _emit_progress(62, "stage 4: predict patches")
     mixed_precision = bool(request.get("mixed_precision", False))
+    if device.startswith("cuda"):
+        device_properties = torch.cuda.get_device_properties(device)
+        if device_properties.total_memory <= 8 * 1024**3:
+            mixed_precision = True
     probability = _predict_and_stitch_on_the_fly(
         model,
         datamodule,
@@ -416,7 +667,8 @@ def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
         "max": float(np.max(probability)),
         "device": device,
         "mixed_precision": mixed_precision,
-        "overlap": list(datamodule.hparams.overlap),
+        "patch_size": patch_size,
+        "overlap": overlap,
         "prepared": prepared,
     }
 

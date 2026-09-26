@@ -11,6 +11,7 @@ from viewer.components.cursor import Cursor
 from viewer.components.dims import Dims
 from viewer.components.layer_list.layerlist import LayerList
 from viewer.components.overlays.brush_circle import BrushCircleOverlay
+from viewer.components.overlays.scale_bar import ScaleBarOverlay
 from viewer.layers.base.base import Layer
 from viewer.layers.points.points import Points
 from viewer.utils.mouse_handler import MouseHandler
@@ -26,6 +27,7 @@ class ViewerModel(MouseHandler, QObject):
     layer_added_ = pyqtSignal(object)
     layer_removed_ = pyqtSignal(object)
     layers_reordered_ = pyqtSignal()
+    scale_changed_ = pyqtSignal()
 
     def __init__(
         self,
@@ -35,6 +37,8 @@ class ViewerModel(MouseHandler, QObject):
         axis_labels=(),
         layers_sorter: Callable = None,
         active_layer: Layer = None,
+        microns_per_voxel=None,
+        world_scale=None,
     ):
         MouseHandler.__init__(self)
         QObject.__init__(self)
@@ -49,6 +53,15 @@ class ViewerModel(MouseHandler, QObject):
             self._layers_sorter = default_layers_sorter
         self.layers = self._layers_sorter(self.layer_lists)
         self.brush_circle = BrushCircleOverlay()
+        self.scale_bar = ScaleBarOverlay()
+        self._microns_per_voxel = np.asarray(
+            microns_per_voxel if microns_per_voxel is not None else (1, 1, 1),
+            dtype=float,
+        )
+        self._world_scale = np.asarray(
+            world_scale if world_scale is not None else (1, 1, 1),
+            dtype=float,
+        )
         self.canvas_size = (600, 800)
         self._active_layer = active_layer
         self._status = {"text": ""}
@@ -227,9 +240,20 @@ class ViewerModel(MouseHandler, QObject):
                 layer.highlight_thickness = thickness
 
     def set_scale(self, scale) -> None:
+        self._world_scale = np.asarray(scale, dtype=float)
         for layer in self.layers:
             layer.scale = scale
         self.dims.current_step = self.dims.current_step
+        self.scale_changed_.emit()
+
+    @property
+    def microns_per_world_unit(self) -> float:
+        """Physical size of one horizontal viewer-world unit in micrometers."""
+        axis = self.dims.displayed[-1]
+        world_scale = self._world_scale[axis]
+        if world_scale <= 0:
+            return float("nan")
+        return float(self._microns_per_voxel[axis] / world_scale)
 
     def unsaved_layers(self) -> List[Layer]:
         unsaved = []

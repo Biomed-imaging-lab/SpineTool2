@@ -69,15 +69,13 @@ class Stage4InferenceDataset(Dataset):
 		i_vsot[vsot_shaft] = 1  
 		i_vsot[vsot_spine] = 2
 		i_vsot_norm = normalize_minmax(i_vsot).astype(np.float16)
+		self.area_mask = None
 
 	
 		if area_path and os.path.exists(area_path):
 			area = imread(area_path) > 0
-			area[area > 0] = 1.0
 			if i_vsot_norm.shape == area.shape:
-				i_vsot_norm = (i_vsot_norm * area).astype(np.float16)
-				d_dendr_norm = d_dendr_norm * area
-				d_spine_norm = d_spine_norm * area
+				self.area_mask = area
 			else:
 				print(f"Shape mismatch {i_vsot_norm.shape} vs {area.shape}")
 
@@ -95,9 +93,18 @@ class Stage4InferenceDataset(Dataset):
 		z_steps = range(0, self.shape[0], self.stride[0])
 		y_steps = range(0, self.shape[1], self.stride[1])
 		x_steps = range(0, self.shape[2], self.stride[2])
+		dz, dy, dx = self.patch_size
 		for z in z_steps:
 			for y in y_steps:
 				for x in x_steps:
+					if self.area_mask is not None:
+						area_patch = self.area_mask[
+							z:min(z + dz, self.shape[0]),
+							y:min(y + dy, self.shape[1]),
+							x:min(x + dx, self.shape[2]),
+						]
+						if not np.any(area_patch):
+							continue
 					coords.append((z, y, x))
 		return coords
 
@@ -142,6 +149,11 @@ class Stage4InferenceDataset(Dataset):
 		p_ch2 = self.ch2[z:z_end, y:y_end, x:x_end]
 		p_ch3 = self.ch3[z:z_end, y:y_end, x:x_end]
 		vsot = self.vsot_orig[z:z_end, y:y_end, x:x_end]
+		if self.area_mask is not None:
+			area_patch = self.area_mask[z:z_end, y:y_end, x:x_end]
+			p_ch1 = p_ch1 * area_patch
+			p_ch2 = p_ch2 * area_patch
+			p_ch3 = p_ch3 * area_patch
 
 		# Дополняем до 64x64x64, если кусок обрезан
 		p_ch1 = self.__pad_chunk(p_ch1)
@@ -273,4 +285,4 @@ class Stage4WithoutVSOTInferenceDataset(Dataset):
 			"image": torch.from_numpy(input_tensor),
 			"coords": torch.tensor([z, y, x]),
 			"valid_shape": torch.tensor([valid_z, valid_y, valid_x])
-		}	
+		}

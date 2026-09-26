@@ -7,6 +7,8 @@ CORRECTIONS_PATH = ARTIFACTS_PATH + "/corrections"
 PLUGIN_RUNTIME_PATH = ARTIFACTS_PATH + "/plugin_runtime"
 RAW_IMAGE_PATH = LAYERS_PATH + "/raw.tif"
 
+FINAL_MESH_MIN_COMPONENT_SIZE_RATE = 0.01
+
 STAGE_STATUS_NOT_STARTED = "not_started"
 STAGE_STATUS_CONFIGURED = "configured"
 STAGE_STATUS_READY = "ready"
@@ -66,8 +68,8 @@ NEURAL_CASCADE_STAGES = (
         "key": "stage_4",
         "name": "Stage 4. Dendritic spines segmentation from binary image",
         "description": (
-            "Input: pre-segmentation from external stem/spines tool for each dendrite branch. "
-            "Output: probability volume 0..1 at original scale, then thresholds for stem/spines."
+            "Input: pre-segmentation from external shaft/spines tool for each dendrite branch. "
+            "Output: probability volume 0..1 at original scale, then thresholds for shaft/spines."
         ),
         "depends_on": (3,),
     },

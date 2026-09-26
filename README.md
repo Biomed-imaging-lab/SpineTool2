@@ -1,6 +1,6 @@
 ## Install
 1. Download code
-2. Download and Unzip [CGAL.zip] (https://github.com/Biomed-imaging-lab/SpineTool2/releases/download/0.1/CGAL.zip) next to code, e.g. `PATH_TO_CODE\CGAL\...`
+2. Download and Unzip [CGAL.zip](https://github.com/Biomed-imaging-lab/SpineTool2/releases/download/0.1/CGAL.zip) next to code, e.g. `PATH_TO_CODE\CGAL\...`
 3. Install [Anaconda](https://www.anaconda.com/)
 4. Open Anaconda
 5. Execute

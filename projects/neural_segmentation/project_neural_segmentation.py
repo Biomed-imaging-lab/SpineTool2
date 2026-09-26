@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 import numpy as np
+from scipy.ndimage import generate_binary_structure, label
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QFileDialog
 from tifffile import imread, imwrite
@@ -14,6 +15,8 @@ from tifffile import imread, imwrite
 from projects.neural_segmentation.settings import NeuralSegmentationSettings
 from projects.neural_segmentation.utils.constants import (
     ARTIFACTS_PATH,
+    CORRECTIONS_PATH,
+    FINAL_MESH_MIN_COMPONENT_SIZE_RATE,
     MODEL_RUNS_PATH,
     PLUGIN_RUNTIME_PATH,
     TYPE,
@@ -21,12 +24,23 @@ from projects.neural_segmentation.utils.constants import (
 from projects.neural_segmentation.utils.data_processing.plugin_inference import (
     run_ai_spines_inference,
 )
+from projects.neural_segmentation.utils.data_processing.mask_corrections import (
+    apply_local_percentile_probability_corrections,
+    effective_user_corrections,
+    load_user_correction_state,
+    save_user_correction_state,
+)
 from projects.neural_segmentation.widgets.qt_voxel_preview_options import (
     QtNeuralVoxelPreviewOptions,
 )
 from projects.neural_segmentation.widgets.qt_necks_preview_options import (
     QtNeuralNecksPreviewOptions,
 )
+from projects.neural_segmentation.widgets.qt_spine_mesh_preview_options import (
+    QtNeuralSpineMeshPreviewOptions,
+)
+from projects.neural_segmentation.utils.data_processing.finalize_spine_preview import finalize_spine_preview
+from projects.neural_segmentation.utils.data_processing.component_preview import build_component_preview
 from projects.neural_segmentation.widgets.qt_stage4_run_options import (
     QtStage4RunOptions,
 )
@@ -34,6 +48,7 @@ from projects.project_base import ProjectBase
 from projects.segmentation.project_segmentation import (
     DataProcessingTask,
     SegmentationProject,
+    TaskType,
     Types,
 )
 from projects.segmentation.settings import SegmentationSettings
@@ -68,9 +83,9 @@ NEURAL_PLUGIN_STDOUT_KEY = "neural_plugin_stdout"
 NEURAL_PLUGIN_STDERR_KEY = "neural_plugin_stderr"
 NEURAL_OUTPUT_SHAPE_KEY = "neural_output_shape"
 NEURAL_LAYER_SCALE_KEY = "neural_layer_scale"
+NEURAL_USER_CORRECTIONS_PATH_KEY = "neural_user_corrections_path"
+NEURAL_INFERENCE_PROBABILITY_PATH_KEY = "neural_inference_probability_path"
 NEURAL_PLUGIN_ENTRY_SCRIPT = "run_inference.py"
-USER_CORRECTION_POSITIVE_PROBABILITY = 0.999
-USER_CORRECTION_NEGATIVE_PROBABILITY = 0.001
 NEURAL_PLUGIN_STAGE4_SCRIPT = str(
     (Path(__file__).parent / "plugins" / "ai_spines_stage4_inference_cli.py").resolve()
 )
@@ -79,7 +94,7 @@ NEURAL_STAGE_LABELS = {
     1: "binarization",
     2: "neck restoration",
     3: "scale restoration",
-    4: "stem/spines segmentation",
+    4: "shaft/spines segmentation",
 }
 
 
@@ -177,6 +192,7 @@ class NeuralSegmentationProject(SegmentationProject):
     def _ensure_neural_storage(folder: str) -> None:
         os.makedirs(folder + ARTIFACTS_PATH, exist_ok=True)
         os.makedirs(folder + MODEL_RUNS_PATH, exist_ok=True)
+        os.makedirs(folder + CORRECTIONS_PATH, exist_ok=True)
         os.makedirs(folder + PLUGIN_RUNTIME_PATH, exist_ok=True)
 
     def __init__(
@@ -188,6 +204,7 @@ class NeuralSegmentationProject(SegmentationProject):
         self._stage4_run_options = None
         self._neural_painted_masks: dict[int, np.ndarray] = {}
         self._neural_paint_original_values: dict[int, np.ndarray] = {}
+        self._dirty_neural_corrections: set[int] = set()
         self._neural_settings = NeuralSegmentationSettings.instance()
         self._neural_settings.load()
         self._neural_settings.ensure_defaults()
@@ -295,7 +312,7 @@ class NeuralSegmentationProject(SegmentationProject):
                 )
             else:
                 self._qt_next_stage_list.create_new_button.setText(
-                    "run model: stem/spines segmentation"
+                    "run model: shaft/spines segmentation"
                 )
                 self._qt_next_stage_list.create_new_button.clicked.connect(
                     self._create_new_stem_spines_segmentation
@@ -315,17 +332,60 @@ class NeuralSegmentationProject(SegmentationProject):
         if self._current_stage_id() < 4:
             return
         mesh_options = self._mesh_build_options.get_params()
-        metadata = {
-            "name": Translater.instance().get_translation("final segmentation"),
-            "parent_id": source_layer._id,
-            **mesh_options,
-        }
-        self._data_processing_task_queue.append(
-            DataProcessingTask(
-                Types.FINAL_SEGMENTATION,
-                build_final_segmentation,
+        source_data = source_layer._data
+        foreground = source_data > 0
+        labels = np.empty(source_data.shape, dtype=np.uint16)
+        try:
+            component_count = label(
+                foreground,
+                structure=generate_binary_structure(3, 3),
+                output=labels,
+            )
+        except RuntimeError:
+            labels = np.empty(source_data.shape, dtype=np.uint32)
+            component_count = label(
+                foreground,
+                structure=generate_binary_structure(3, 3),
+                output=labels,
+            )
+        del foreground
+        counts = np.bincount(labels.ravel())
+        min_size = max(
+            1,
+            int(
+                np.count_nonzero(source_data)
+                * FINAL_MESH_MIN_COMPONENT_SIZE_RATE
+            ),
+        )
+        component_ids = []
+        for component_id in range(1, component_count + 1):
+            if counts[component_id] < min_size:
+                continue
+            values = np.unique(source_data[labels == component_id])
+            if 1 in values and 2 in values:
+                component_ids.append(component_id)
+        del labels
+        if not component_ids:
+            show_error("No valid large connected components found")
+            return
+
+        for position, component_id in enumerate(component_ids, start=1):
+            suffix = f" {position}" if len(component_ids) > 1 else ""
+            metadata = {
+                "name": Translater.instance().get_translation(
+                    "spine correction preview"
+                ) + suffix,
+                "parent_id": source_layer._id,
+                "neural_spine_mesh_preview": True,
+                "neural_component_id": component_id,
+                "neural_component_count": len(component_ids),
+                **mesh_options,
+            }
+            self._data_processing_task_queue.append(DataProcessingTask(
+                Types.FINAL_SEGMENTATION, build_component_preview,
                 {
-                    "data": source_layer._data,
+                    "data": source_data,
+                    "component_id": component_id,
                     "shape": self._project_info.shape,
                     "scale": self._project_info.real_scale,
                     "min_coord": self._project_info.min_coordinates,
@@ -335,10 +395,9 @@ class NeuralSegmentationProject(SegmentationProject):
                     "queue_in": self._data_processing_communication_queue_out,
                     "queue_out": self._data_processing_communication_queue_in,
                 },
-                "final_segmentation in queue",
+                f"spine correction preview {position}/{len(component_ids)} in queue",
                 source_layer._id,
-            )
-        )
+            ))
 
     def _choose_file(self, caption: str, filter: str) -> str:
         dlg = QFileDialog(self._window._qt_window)
@@ -381,8 +440,13 @@ class NeuralSegmentationProject(SegmentationProject):
         return path or ""
 
     def _relative_project_path(self, path: str) -> str:
-        rel = os.path.relpath(path, self._project_info.folder)
-        return "/" + rel.replace("\\", "/")
+        portable_path = getattr(self._project_info, "portable_path", None)
+        if callable(portable_path):
+            return portable_path(path)
+        relative = os.path.relpath(path, self._project_info.folder)
+        if relative == os.pardir or relative.startswith(os.pardir + os.sep):
+            return os.path.abspath(path)
+        return relative.replace("\\", "/")
 
     def _stage_folder_abs(self, stage_id: int) -> str:
         return (
@@ -495,9 +559,18 @@ class NeuralSegmentationProject(SegmentationProject):
         return os.path.join(models_folder, "stage_" + str(stage_id))
 
     def _project_path(self, relative_or_abs: str) -> str:
-        if re.fullmatch(r"[a-zA-Z]:[\\/].*", relative_or_abs):
-            return relative_or_abs
-        return self._project_info.folder + relative_or_abs
+        resolve_path = getattr(self._project_info, "resolve_path", None)
+        if callable(resolve_path):
+            return resolve_path(relative_or_abs)
+        if not relative_or_abs:
+            return ""
+        value = os.path.normpath(str(relative_or_abs))
+        drive, _ = os.path.splitdrive(value)
+        if drive or value.startswith("\\\\"):
+            return os.path.abspath(value)
+        return os.path.abspath(
+            os.path.join(self._project_info.folder, value.lstrip("/\\"))
+        )
 
     def _read_probability(
         self, file: str, expected_shape: Optional[tuple] = None
@@ -642,70 +715,118 @@ class NeuralSegmentationProject(SegmentationProject):
             return None
         return probability_file
 
-    @staticmethod
-    def _apply_binary_label_corrections(
-        probability: np.ndarray,
-        labels: np.ndarray,
-        threshold_0_1: float,
-        painted_mask: np.ndarray,
-    ) -> tuple[np.ndarray, int]:
-        """Apply high/low probabilities only at explicitly painted voxels."""
-        labels = np.asarray(labels)
-        probability_view = probability
-        if probability.ndim == labels.ndim + 1:
-            if probability.shape[0] == 1:
-                probability_view = probability[0]
-            elif probability.shape[1] == 1:
-                probability_view = probability[:, 0]
+    def _correction_file_for_layer(self, layer_id: int) -> Optional[str]:
+        metadata = self._project_info.layers_parameters[layer_id].tmp_metadata
+        correction_path = metadata.get(NEURAL_USER_CORRECTIONS_PATH_KEY, "")
+        if correction_path == "":
+            return None
+        return self._project_path(correction_path)
 
-        if probability_view.shape != labels.shape or painted_mask.shape != labels.shape:
-            raise ValueError(
-                "Probability, label and painted-mask shapes do not match: "
-                + str(tuple(probability.shape))
-                + " vs "
-                + str(tuple(labels.shape))
-                + " vs "
-                + str(tuple(painted_mask.shape))
+    def _load_neural_correction_state(
+        self, layer_id: int, *, create: bool
+    ) -> bool:
+        layer = self._layer_for_id(layer_id)
+        if layer is None:
+            return False
+        painted_mask = self._neural_painted_masks.get(layer_id)
+        original_values = self._neural_paint_original_values.get(layer_id)
+        if (
+            painted_mask is not None
+            and original_values is not None
+            and painted_mask.shape == tuple(layer.data.shape)
+            and original_values.shape == tuple(layer.data.shape)
+        ):
+            return True
+
+        correction_file = self._correction_file_for_layer(layer_id)
+        if correction_file is not None:
+            if not os.path.isfile(correction_file):
+                show_warning("User-correction artifact was not found: " + correction_file)
+            else:
+                try:
+                    painted_mask, original_values = load_user_correction_state(
+                        correction_file, tuple(layer.data.shape)
+                    )
+                    self._neural_painted_masks[layer_id] = painted_mask
+                    self._neural_paint_original_values[layer_id] = original_values
+                    return True
+                except Exception as err:
+                    show_error("Failed to load user corrections: " + str(err))
+                    if not create:
+                        return False
+
+        if not create:
+            return False
+        self._neural_painted_masks[layer_id] = np.zeros(layer.data.shape, dtype=bool)
+        self._neural_paint_original_values[layer_id] = np.zeros_like(layer.data)
+        return True
+
+    def _persist_neural_correction_state(self, layer_id: int) -> bool:
+        painted_mask = self._neural_painted_masks.get(layer_id)
+        original_values = self._neural_paint_original_values.get(layer_id)
+        if painted_mask is None or original_values is None:
+            return True
+        metadata = self._project_info.layers_parameters[layer_id].tmp_metadata
+        timestamp = str(datetime.now()).replace(":", "_").replace(" ", "_").replace(
+            ".", "_"
+        )
+        correction_path = (
+            CORRECTIONS_PATH
+            + "/layer_"
+            + str(layer_id)
+            + "_corrections_"
+            + timestamp
+            + ".npz"
+        )
+        try:
+            save_user_correction_state(
+                self._project_path(correction_path), painted_mask, original_values
             )
+        except Exception as err:
+            show_error("Failed to save user corrections: " + str(err))
+            return False
+        metadata[NEURAL_USER_CORRECTIONS_PATH_KEY] = correction_path
+        self._dirty_neural_corrections.discard(layer_id)
+        return True
 
-        threshold = min(max(float(threshold_0_1), 0.0), 1.0)
-        corrected_positive = painted_mask & (labels > 0)
-        corrected_negative = painted_mask & (labels == 0)
-        correction_count = int(
-            np.count_nonzero(corrected_positive)
-            + np.count_nonzero(corrected_negative)
-        )
-        if correction_count == 0:
-            return probability, 0
+    def _release_neural_correction_state(self, layer_id: int) -> None:
+        self._neural_painted_masks.pop(layer_id, None)
+        self._neural_paint_original_values.pop(layer_id, None)
 
-        result = probability.astype(np.float32, copy=True)
-        if probability_view is probability:
-            result_view = result
-        elif probability.shape[0] == 1:
-            result_view = result[0]
-        else:
-            result_view = result[:, 0]
-        positive_probability = max(
-            USER_CORRECTION_POSITIVE_PROBABILITY,
-            float(np.nextafter(np.float32(threshold), np.float32(1.0))),
-        )
-        negative_probability = min(
-            USER_CORRECTION_NEGATIVE_PROBABILITY,
-            float(np.nextafter(np.float32(threshold), np.float32(0.0))),
-        )
-        result_view[corrected_positive] = min(positive_probability, 1.0)
-        result_view[corrected_negative] = max(negative_probability, 0.0)
-        return result, correction_count
+    def _flush_neural_correction_states(self, *, release: bool) -> bool:
+        for layer_id in list(self._dirty_neural_corrections):
+            if layer_id not in self._project_info.layers_parameters:
+                self._dirty_neural_corrections.discard(layer_id)
+                self._release_neural_correction_state(layer_id)
+                continue
+            if not self._persist_neural_correction_state(layer_id):
+                return False
+        if release:
+            for layer_id in list(self._neural_painted_masks):
+                self._release_neural_correction_state(layer_id)
+        return True
+
+    def _release_inactive_neural_correction_states(self, active_layer_id: int) -> bool:
+        for layer_id in list(self._neural_painted_masks):
+            if layer_id == active_layer_id:
+                continue
+            if (
+                layer_id in self._dirty_neural_corrections
+                and not self._persist_neural_correction_state(layer_id)
+            ):
+                return False
+            self._release_neural_correction_state(layer_id)
+        return True
 
     def _track_neural_paint(self, layer_id: int, history_item) -> None:
         layer = self._layer_for_id(layer_id)
         if layer is None:
             return
-        painted_mask = self._neural_painted_masks.get(layer_id)
-        if painted_mask is None or painted_mask.shape != tuple(layer.data.shape):
-            painted_mask = np.zeros(layer.data.shape, dtype=bool)
-            self._neural_painted_masks[layer_id] = painted_mask
-            self._neural_paint_original_values[layer_id] = np.zeros_like(layer.data)
+        if not self._release_inactive_neural_correction_states(layer_id):
+            return
+        if not self._load_neural_correction_state(layer_id, create=True):
+            return
+        painted_mask = self._neural_painted_masks[layer_id]
         original_values = self._neural_paint_original_values[layer_id]
         for change in history_item:
             if not isinstance(change, tuple) or len(change) < 2:
@@ -720,6 +841,7 @@ class NeuralSegmentationProject(SegmentationProject):
                 else:
                     original_values[new_indices] = previous_values
             painted_mask[indices] = True
+        self._dirty_neural_corrections.add(layer_id)
 
     def _track_neural_layer_painting(self, layer_id: int) -> None:
         layer = self._layer_for_id(layer_id)
@@ -730,7 +852,7 @@ class NeuralSegmentationProject(SegmentationProject):
                 NEURAL_STAGE_KEY, 0
             )
         )
-        if stage_id not in (1, 2, 3):
+        if stage_id not in (1, 2, 3, 4):
             return
         layer.paint_.connect(
             lambda history_item, tracked_layer_id=layer_id: self._track_neural_paint(
@@ -740,7 +862,7 @@ class NeuralSegmentationProject(SegmentationProject):
         layer._neural_paint_tracking = True
 
     def _sync_probability_with_layer(self, layer_id: int) -> Optional[str]:
-        """Persist user label corrections into the stage probability artifact."""
+        """Persist labels/corrections while keeping model probability immutable."""
         probability_file = self._probability_file_for_layer(layer_id)
         if probability_file is None:
             return None
@@ -752,53 +874,94 @@ class NeuralSegmentationProject(SegmentationProject):
             self._layer_loader.save_layer_data(layer_id, layer.data)
             self._saved = False
 
+        if (
+            layer_id in self._dirty_neural_corrections
+            and not self._persist_neural_correction_state(layer_id)
+        ):
+            return None
+        self._release_neural_correction_state(layer_id)
+        return probability_file
+
+    def _build_inference_probability(
+        self,
+        layer_id: int,
+        corrections: Optional[dict],
+        threshold_0_1: float,
+    ) -> Optional[str]:
+        probability_file = self._probability_file_for_layer(layer_id)
+        if probability_file is None:
+            return None
         metadata = self._project_info.layers_parameters[layer_id].tmp_metadata
-        stage_id = int(metadata.get(NEURAL_STAGE_KEY, 0))
-        if stage_id not in (1, 2, 3):
-            return probability_file
-        if not bool(metadata.get("apply_user_threshold", False)):
+        if corrections is None:
+            metadata.pop(NEURAL_INFERENCE_PROBABILITY_PATH_KEY, None)
             return probability_file
 
-        painted_mask = self._neural_painted_masks.get(layer_id)
-        if painted_mask is None or not np.any(painted_mask):
+        layer = self._layer_for_id(layer_id)
+        if layer is None:
             return probability_file
-        original_values = self._neural_paint_original_values.get(layer_id)
-        if original_values is None:
-            return probability_file
-        effective_painted_mask = painted_mask & (layer.data != original_values)
-        if not np.any(effective_painted_mask):
-            return probability_file
-
-        if stage_id in (1, 2):
-            threshold = float(metadata.get("neural_threshold", 0.5))
-        else:
-            threshold = float(metadata.get("threshold", 50)) / 100.0
-
         probability = self._read_probability(
             probability_file, expected_shape=tuple(layer.data.shape)
         )
         if probability is None:
             return None
-
         try:
-            corrected_probability, correction_count = (
-                self._apply_binary_label_corrections(
-                    probability, layer.data, threshold, effective_painted_mask
+            inference_probability, correction_count = (
+                apply_local_percentile_probability_corrections(
+                    probability,
+                    corrections,
+                    threshold_0_1,
+                    window_size=11,
+                    lower_percentile=10.0,
+                    upper_percentile=90.0,
+                    threshold_margin=0.05,
                 )
             )
         except ValueError as err:
             show_error(str(err))
             return None
+        if correction_count == 0:
+            metadata.pop(NEURAL_INFERENCE_PROBABILITY_PATH_KEY, None)
+            return probability_file
 
-        if correction_count > 0:
-            try:
-                imwrite(probability_file, corrected_probability)
-            except Exception as err:
-                show_error("Failed to save probability corrections: " + str(err))
-                return None
-            self._neural_painted_masks.pop(layer_id, None)
-            self._neural_paint_original_values.pop(layer_id, None)
-        return probability_file
+        inference_path = (
+            CORRECTIONS_PATH
+            + "/layer_"
+            + str(layer_id)
+            + "_current_inference_probability.tif"
+        )
+        inference_file = self._project_path(inference_path)
+        try:
+            imwrite(inference_file, inference_probability)
+        except Exception as err:
+            show_error("Failed to save inference probability: " + str(err))
+            return None
+        metadata[NEURAL_INFERENCE_PROBABILITY_PATH_KEY] = inference_path
+        metadata["neural_inference_correction_count"] = correction_count
+        return inference_file
+
+    def _neural_threshold_for_layer(self, layer_id: int) -> float:
+        metadata = self._project_info.layers_parameters[layer_id].tmp_metadata
+        stage_id = int(metadata.get(NEURAL_STAGE_KEY, 0))
+        if stage_id in (1, 2):
+            return min(max(float(metadata.get("neural_threshold", 0.5)), 0.0), 1.0)
+        return min(max(float(metadata.get("threshold", 50)) / 100.0, 0.0), 1.0)
+
+    def _user_corrections_for_layer(self, layer_id: int) -> Optional[dict]:
+        layer = self._layer_for_id(layer_id)
+        if layer is None:
+            return None
+        if not self._load_neural_correction_state(layer_id, create=False):
+            return None
+        corrections = effective_user_corrections(
+            layer.data,
+            self._neural_painted_masks[layer_id],
+            self._neural_paint_original_values[layer_id],
+        )
+        if layer_id in self._dirty_neural_corrections:
+            if not self._persist_neural_correction_state(layer_id):
+                raise ValueError("Failed to persist user corrections")
+        self._release_neural_correction_state(layer_id)
+        return corrections
 
     def _runtime_json_paths(self, stage_id: int) -> tuple[str, str]:
         runtime_folder = self._project_info.folder + PLUGIN_RUNTIME_PATH
@@ -826,6 +989,7 @@ class NeuralSegmentationProject(SegmentationProject):
         threshold_mode: str = "trunk",
         expected_shape: Optional[tuple] = None,
         process_environment: Optional[dict[str, str]] = None,
+        user_corrections: Optional[dict] = None,
     ) -> None:
         _, python_executable, default_plugin_script_path = plugin_runtime
         plugin_script_path = (
@@ -870,6 +1034,7 @@ class NeuralSegmentationProject(SegmentationProject):
                     "queue_in": self._data_processing_communication_queue_out,
                     "queue_out": self._data_processing_communication_queue_in,
                     "process_environment": process_environment,
+                    "user_corrections": user_corrections,
                 },
                 "stage" + str(stage_id) + " neural inference in queue",
                 parent_id,
@@ -1010,9 +1175,21 @@ class NeuralSegmentationProject(SegmentationProject):
             return
 
         stage1_layer_id = self._active_layers_list[2]._id
+        try:
+            user_corrections = self._user_corrections_for_layer(stage1_layer_id)
+        except ValueError as err:
+            show_error(str(err))
+            return
         stage1_probability = self._sync_probability_with_layer(stage1_layer_id)
         if stage1_probability is None:
             show_warning("Stage 1 probability was not found. Run stage 1 first.")
+            return
+        stage1_probability = self._build_inference_probability(
+            stage1_layer_id,
+            user_corrections,
+            self._neural_threshold_for_layer(stage1_layer_id),
+        )
+        if stage1_probability is None:
             return
 
         params = {
@@ -1055,6 +1232,7 @@ class NeuralSegmentationProject(SegmentationProject):
             label_mode="binary",
             threshold_0_1=threshold,
             expected_shape=tuple(self._active_layers_list[2].data.shape),
+            user_corrections=user_corrections,
         )
 
     def _create_new_voxel_segmentation(self) -> None:
@@ -1070,10 +1248,32 @@ class NeuralSegmentationProject(SegmentationProject):
 
         stage1_layer_id = self._active_layers_list[2]._id
         stage2_layer_id = self._active_layers_list[3]._id
+        try:
+            stage1_user_corrections = self._user_corrections_for_layer(
+                stage1_layer_id
+            )
+            stage2_user_corrections = self._user_corrections_for_layer(
+                stage2_layer_id
+            )
+        except ValueError as err:
+            show_error(str(err))
+            return
         stage1_probability = self._sync_probability_with_layer(stage1_layer_id)
         stage2_probability = self._sync_probability_with_layer(stage2_layer_id)
         if stage1_probability is None or stage2_probability is None:
             show_warning("Stage 1/2 probabilities were not found. Run previous stages first.")
+            return
+        stage1_probability = self._build_inference_probability(
+            stage1_layer_id,
+            stage1_user_corrections,
+            self._neural_threshold_for_layer(stage1_layer_id),
+        )
+        stage2_probability = self._build_inference_probability(
+            stage2_layer_id,
+            stage2_user_corrections,
+            self._neural_threshold_for_layer(stage2_layer_id),
+        )
+        if stage1_probability is None or stage2_probability is None:
             return
 
         params = {"threshold": 50, "apply_user_threshold": False}
@@ -1114,6 +1314,7 @@ class NeuralSegmentationProject(SegmentationProject):
             label_mode="binary",
             threshold_0_1=threshold,
             expected_shape=tuple(self._project_info.shape),
+            user_corrections=stage2_user_corrections,
         )
 
     def _create_new_stem_spines_segmentation(self) -> None:
@@ -1132,22 +1333,28 @@ class NeuralSegmentationProject(SegmentationProject):
 
         stage3_layer_id = self._active_layers_list[4]._id
         stage3_layer = self._active_layers_list[4]
-        if stage3_layer._changed:
-            self._layer_loader.save_layer_data(stage3_layer_id, stage3_layer.data)
-            self._saved = False
-        stage3_mask_path = self._project_path(
-            self._project_info.layers_parameters[stage3_layer_id].tmp_file
-        )
-
+        if self._sync_probability_with_layer(stage3_layer_id) is None:
+            show_warning("Stage 3 probability was not found. Run stage 3 first.")
+            return
         params = self._stage4_run_options.get_params()
+        stage3_data_changed = bool(stage3_layer._changed)
         if bool(params.get("fill_holes_before_stage4", True)):
             filled_stage3 = fill_small_enclosed_holes(stage3_layer.data)
-            self._layer_loader.update_layer(stage3_layer_id, filled_stage3, stage3_layer)
-            self._layer_loader.save_layer_data(stage3_layer_id, filled_stage3)
+            if not np.array_equal(filled_stage3, stage3_layer.data):
+                self._layer_loader.update_layer(
+                    stage3_layer_id, filled_stage3, stage3_layer
+                )
+                stage3_data_changed = True
             stage3_params = self._project_info.layers_parameters[stage3_layer_id]
             stage3_params.metadata["holes_filled_before_stage4"] = True
             stage3_params.tmp_metadata["holes_filled_before_stage4"] = True
             self._saved = False
+        if stage3_data_changed:
+            self._layer_loader.save_layer_data(stage3_layer_id, stage3_layer.data)
+            self._saved = False
+        stage3_mask_path = self._project_info.layers_parameters[
+            stage3_layer_id
+        ].tmp_file
         overlap_percent = int(params["overlap_percent"])
         if overlap_percent not in (75, 50, 20):
             overlap_percent = 75
@@ -1168,21 +1375,22 @@ class NeuralSegmentationProject(SegmentationProject):
         )
         request = {
             "repo_root": plugin_runtime[0],
+            "project_root": self._project_info.folder,
             "ckpt_path": selected_model,
             "input_image_path": self._project_path(
                 self._project_info.layers_parameters[0].tmp_file
             ),
-            "stage3_mask_path": stage3_mask_path,
-            "area_path": self._project_path(
-                self._project_info.layers_parameters[self._active_layers_list[1]._id].tmp_file
-            ),
+            "stage3_mask_path": self._project_path(stage3_mask_path),
+            "area_path": self._project_path(self._project_info.layers_parameters[
+                self._active_layers_list[1]._id
+            ].tmp_file),
             "current_scale": list(self._project_info.real_scale),
             "device": self._project_info.device,
             "patch_size": patch_size,
             "overlap": overlap,
             "mixed_precision": mixed_precision,
             "skeleton_prune_length_nm": params["skeleton_prune_length_nm"],
-            "stage4_prepare_dir": self._stage_folder_abs(4) + "/preprocess",
+            "stage4_prepare_dir": MODEL_RUNS_PATH + "/stage_4/preprocess",
             "vsot_matlab_dir": stage4_runtime["vsot_matlab_dir"],
             "vsot_root": stage4_runtime["vsot_root"],
             "octave_executable": stage4_runtime["octave_executable"],
@@ -1190,7 +1398,7 @@ class NeuralSegmentationProject(SegmentationProject):
         self._enqueue_neural_inference_task(
             layer_type=Types.VOXEL_MESH_SEGMENTATION,
             parent_id=stage3_layer_id,
-            layer_name="stem and spines",
+            layer_name="shaft and spines",
             plugin_runtime=plugin_runtime,
             stage_id=4,
             request=request,
@@ -1209,6 +1417,29 @@ class NeuralSegmentationProject(SegmentationProject):
 
     def _set_preview_options(self) -> None:
         layer = self._viewer_model.active_layer
+        if layer and layer.metadata["type"] == Types.FINAL_SEGMENTATION:
+            layer_params = self._project_info.layers_parameters[layer._id]
+            if layer_params.tmp_metadata.get("neural_spine_mesh_preview", False):
+                delete = self._current_preview_options not in (
+                    self._empty_options, self._no_parameters
+                )
+                self._current_preview_options = QtNeuralSpineMeshPreviewOptions(
+                    layer, self._viewer_model.camera, self._project_info.folder,
+                    layer_params.tmp_additional_files["spines"],
+                    layer_params.tmp_deleted_spines, layer_params.tmp_metadata,
+                )
+                self._current_preview_options.parameters_fixed_.connect(
+                    self._fix_neural_spine_mesh_preview
+                )
+                self._current_preview_options.spine_deleted_.connect(self._on_spine_deleted)
+                self._current_preview_options.spine_restored_.connect(self._on_spine_restored)
+                self._current_preview_options.camera_policy_changed_.connect(self._on_camera_policy_changed)
+                self._current_preview_options.current_spine_changed_.connect(self._on_current_spine_changed)
+                self._preview_options_widget.replace_widget(
+                    self._current_preview_options, delete, Qt.AlignmentFlag.AlignTop
+                )
+                self._current_preview_options.ndisplay = self._viewer_model.dims.ndisplay
+                return
         if layer and layer.metadata["type"] == Types.NECKS:
             layer_params = self._project_info.layers_parameters[layer._id]
             if int(layer_params.tmp_metadata.get(NEURAL_STAGE_KEY, 0)) == 2:
@@ -1261,6 +1492,82 @@ class NeuralSegmentationProject(SegmentationProject):
             self._current_preview_options, delete, Qt.AlignmentFlag.AlignTop
         )
         self._current_preview_options.ndisplay = self._viewer_model.dims.ndisplay
+
+    def _fix_neural_spine_mesh_preview(self) -> None:
+        layer = self._viewer_model.active_layer
+        if layer is None:
+            return
+        params = self._project_info.layers_parameters[layer._id]
+        deleted = params.tmp_deleted_spines.copy()
+        original_spines_files = params.tmp_spines_files.copy()
+        kept_files = [
+            file for position, file in enumerate(original_spines_files)
+            if position not in deleted
+        ]
+        params.tmp_spines_files = kept_files
+        params.tmp_adjusted_spines_files = kept_files.copy()
+        params.tmp_deleted_spines = set()
+        metadata = {
+            "name": Translater.instance().get_translation("final segmentation"),
+            "parent_id": self._project_info.data.layers[layer._id].parent_id,
+            "mesh_complexity": params.tmp_metadata.get("mesh_complexity"),
+            "fill_holes_before_mesh": params.tmp_metadata.get(
+                "fill_holes_before_mesh"
+            ),
+        }
+        promotion_task = DataProcessingTask(
+            Types.FINAL_SEGMENTATION, finalize_spine_preview,
+            {
+                "mesh_v_f_vv": layer.data,
+                "mesh_file": params.tmp_mesh_file,
+                "spines_files": original_spines_files,
+                "spines_file": params.tmp_additional_files["spines"],
+                "deleted_spines": deleted,
+                "folder": self._project_info.folder,
+                "metadata": metadata,
+                "queue_in": self._data_processing_communication_queue_out,
+                "queue_out": self._data_processing_communication_queue_in,
+            },
+            "final segmentation in queue",
+            self._project_info.data.layers[layer._id].parent_id,
+            layer._id,
+        )
+        promotion_task._pre_promotion_file = params.tmp_file
+        self._data_processing_task_queue.append(promotion_task)
+
+    def _check_data_processing_communication_queue(self) -> None:
+        task = self._active_data_processing_task
+        promotion_layer_id = None
+        if task is not None and task.processor is finalize_spine_preview:
+            promotion_layer_id = task.layer_id
+
+        super()._check_data_processing_communication_queue()
+
+        if (
+            promotion_layer_id is None
+            or self._active_data_processing_task is task
+            or promotion_layer_id not in self._project_info.layers_parameters
+        ):
+            return
+
+        params = self._project_info.layers_parameters[promotion_layer_id]
+        if params.tmp_file == getattr(task, "_pre_promotion_file", params.tmp_file):
+            return
+        params.tmp_preview = False
+        params.preview = False
+        params.tmp_metadata.pop("neural_spine_mesh_preview", None)
+        params.metadata.pop("neural_spine_mesh_preview", None)
+        params.name = Translater.instance().get_translation("final segmentation")
+        promoted_layer = None
+        for candidate in self._next_stage_list:
+            if candidate._id == promotion_layer_id:
+                promoted_layer = candidate
+                break
+        if promoted_layer is not None:
+            promoted_layer.preview = False
+            promoted_layer.name = params.name
+            if promoted_layer == self._viewer_model.active_layer:
+                self._set_preview_options()
 
     def _refresh_labels_from_probability(
         self,
@@ -1315,14 +1622,14 @@ class NeuralSegmentationProject(SegmentationProject):
                 base_mask,
             )
 
-        painted_mask = self._neural_painted_masks.get(layer_id)
-        if painted_mask is not None and painted_mask.shape == labels.shape:
-            original_values = self._neural_paint_original_values.get(layer_id)
-            if original_values is not None:
-                effective_painted_mask = painted_mask & (
-                    layer.data != original_values
-                )
-                labels[effective_painted_mask] = layer.data[effective_painted_mask]
+        try:
+            corrections = self._user_corrections_for_layer(layer_id)
+        except ValueError as err:
+            show_error(str(err))
+            return
+        if corrections is not None:
+            correction_mask = corrections["mask"]
+            labels[correction_mask] = layer.data[correction_mask]
 
         self._layer_loader.update_layer(layer_id, labels, layer)
         self._layer_loader.save_layer_data(layer_id, labels)
@@ -1417,10 +1724,14 @@ class NeuralSegmentationProject(SegmentationProject):
             params.get("layer_type") == Types.VOXEL_MESH_SEGMENTATION
             and stage_id in (3, 4)
         )
+        is_neural_mesh_preview = (
+            params.get("layer_type") == Types.FINAL_SEGMENTATION
+            and metadata.get("neural_spine_mesh_preview", False)
+        )
 
         super()._create()
 
-        if stage_id in (1, 2, 3):
+        if stage_id in (1, 2, 3, 4):
             self._track_neural_layer_painting(
                 self._project_info.data.last_layer_id
             )
@@ -1431,6 +1742,15 @@ class NeuralSegmentationProject(SegmentationProject):
             output_shape = tuple(data.shape) if hasattr(data, "shape") else None
             self._apply_neural_layer_scale(layer_id, output_shape)
 
+        if is_neural_mesh_preview:
+            layer_id = self._project_info.data.last_layer_id
+            layer_params = self._project_info.layers_parameters[layer_id]
+            layer_params.preview = True
+            layer_params.tmp_preview = True
+            for layer in self._next_stage_list:
+                if layer._id == layer_id:
+                    layer.preview = True
+                    break
         if not is_neural_voxel:
             return
         layer_id = self._project_info.data.last_layer_id
@@ -1446,3 +1766,16 @@ class NeuralSegmentationProject(SegmentationProject):
             if layer._id == layer_id:
                 layer.preview = True
                 break
+
+    def save(self, save: bool = True) -> None:
+        if (
+            len(self._layer_loader_task_queue) > 0
+            and self._layer_loader_task_queue[-1].type == TaskType.SAVE
+        ) or (
+            self._active_layer_loader_task
+            and self._active_layer_loader_task.type == TaskType.SAVE
+        ):
+            return
+        if save and not self._flush_neural_correction_states(release=True):
+            return
+        super().save(save)

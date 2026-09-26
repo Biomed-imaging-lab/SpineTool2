@@ -630,6 +630,9 @@ translations:
   "final segmentation":
     en: "Final segmented mesh"
     ru: "Итоговый сегментированный меш"
+  "spine correction preview":
+    en: "Spine correction preview"
+    ru: "Предпросмотр коррекции шипиков"
 
   # layer controls widget
   "layer controls":
@@ -735,6 +738,9 @@ translations:
   "edge color":
     en: "Edge color:"
     ru: "Цвет границ:"
+  "show mesh edges":
+    en: "Show mesh edges:"
+    ru: "Показывать рёбра меша:"
   "out of slice":
     en: "Out of slice:"
     ru: "Точки вне среза:"

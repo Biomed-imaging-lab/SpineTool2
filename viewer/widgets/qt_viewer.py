@@ -10,6 +10,7 @@ from utils.themes import color_as_hex, get_theme
 from viewer.components._viewer_constants import CursorStyle
 from viewer.components.overlays.base import Overlay
 from viewer.components.overlays.brush_circle import BrushCircleOverlay
+from viewer.components.overlays.scale_bar import ScaleBarOverlay
 from viewer.layers.base.base import Layer
 from viewer.utils.utils import (
     ReadOnlyWrapper,
@@ -84,6 +85,7 @@ class QtViewer(QSplitter):
         for layer in self.viewer.layers:
             self._add_layer(layer)
         self._add_overlay(self.viewer.brush_circle)
+        self._add_overlay(self.viewer.scale_bar)
 
     def _leave_canvas(self):
         self.viewer.status = {"text": ""}
@@ -129,7 +131,7 @@ class QtViewer(QSplitter):
     def _add_overlay(self, overlay: Overlay) -> None:
         vispy_overlay = create_vispy_overlay(overlay, viewer=self.viewer)
 
-        if isinstance(overlay, BrushCircleOverlay):
+        if isinstance(overlay, (BrushCircleOverlay, ScaleBarOverlay)):
             vispy_overlay.node.parent = self.view
 
         self.overlay_to_visual[overlay] = vispy_overlay
@@ -196,7 +198,7 @@ class QtViewer(QSplitter):
                 if isinstance(scaled_size, np.ndarray):
                     pixmap = ellipse_pixmap(scaled_size[0], scaled_size[1])
                 else:
-                    pixmap = ellipse_pixmap(scaled_size)
+                    pixmap = ellipse_pixmap(scaled_size, scaled_size)
                 q_cursor = QCursor(pixmap)
             else:
                 q_cursor = QCursor(square_pixmap(scaled_size))

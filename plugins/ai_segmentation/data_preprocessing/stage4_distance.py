@@ -39,6 +39,11 @@ def generate_distance_channels(mask, skeleton, res_nm=(100.0, 22.0, 22.0)):
         mask_dist = d_dendr[mask]
         d_dendr_norm[mask] = (d_dendr[mask] - mask_dist.min()) / (mask_dist.max() - mask_dist.min() + 1e-8)
     print(f"D_dendr")
+    if not np.any(mask):
+        raise ValueError("Cannot build stage 4 distance channels from an empty mask")
+    if not np.any(skeleton):
+        raise ValueError("Cannot build stage 4 distance channels: skeleton is empty")
+
     # 2. Поиск поверхности
     eroded_mask = ndi.binary_erosion(mask)
     surface = mask & ~eroded_mask
@@ -46,30 +51,15 @@ def generate_distance_channels(mask, skeleton, res_nm=(100.0, 22.0, 22.0)):
     surface_dist = np.zeros_like(d_dendr, dtype=np.float32)
     surface_dist[surface] = d_dendr[surface]
 
-    if np.any(surface):
-        baseline_radius_nm = np.median(surface_dist[surface])
-    else:
-        baseline_radius_nm = 500.0
-    print(f"[i] Автоматически вычисленный радиус ствола: {baseline_radius_nm:.1f} нм")    
-
-    min_peak_dist = (baseline_radius_nm * 1.0) +  res_nm[0] * 1.0
-
-    # Адаптивное окно поиска (ищем в радиусе ствола, но не меньше 250 нм)
-    search_radius_nm = max(1500.0, baseline_radius_nm * 0.9)
-    search_radius_xy = max(400.0, min(900.0, baseline_radius_nm))
-    search_radius_z = baseline_radius_nm * 1.0
     # # 3. Поиск осей шипиков (окрестность 500 нм)
     # radius_nm = 500.0
-    win_z = max(1, int(np.round(search_radius_z / res_nm[0])))
-    win_y = max(1, int(np.round(search_radius_xy / res_nm[1])))
-    win_x = max(1, int(np.round(search_radius_xy / res_nm[2])))
-
-    # Ищем пики на слегка сглаженной поверхности
-    smoothed_dist = ndi.gaussian_filter(surface_dist, sigma=1.0)
-    local_max = ndi.maximum_filter(smoothed_dist, size=(win_z, win_y, win_x))
-    peaks_mask = surface & (smoothed_dist == local_max) & (smoothed_dist > min_peak_dist)
-    # local_max = ndi.maximum_filter(surface_dist, size=(win_z, win_y, win_x))
-    # peaks_mask = surface & (surface_dist == local_max) & (surface_dist > 0)
+    radius_nm = 500.0
+    window = tuple(
+        max(1, int(np.round(radius_nm / float(axis_resolution))))
+        for axis_resolution in res_nm
+    )
+    local_max = ndi.maximum_filter(surface_dist, size=window, mode="constant")
+    peaks_mask = surface & (surface_dist == local_max) & (surface_dist > 0)
     peak_coords = np.argwhere(peaks_mask)
     print(f"[i] Найдено потенциальных макушек шипиков: {len(peak_coords)}")
     # 4. Построение предполагаемых осей шипиков
@@ -136,7 +126,7 @@ def generate_distance_channels(mask, skeleton, res_nm=(100.0, 22.0, 22.0)):
         #                     pass
 
         # print("[i] Прокладка осей завершена.")
-        cost_surface = np.full(mask.shape, 10.0, dtype=np.float32)
+        cost_surface = np.full(mask.shape, np.inf, dtype=np.float32)
         cost_surface[mask] = 1.0
 
         mcp = MCP_Geometric(cost_surface)
@@ -159,16 +149,19 @@ def generate_distance_channels(mask, skeleton, res_nm=(100.0, 22.0, 22.0)):
     spine_axes_inverted = np.ascontiguousarray(~spine_axes)
 
     if not np.any(spine_axes):
-        d_spine_norm = np.ones_like(mask, dtype=np.float32)
-    else:
-        d_spine = edt.edt(spine_axes_inverted, anisotropy=res_nm).astype(np.float32)  
-        d_spine_norm = np.zeros_like(d_spine, dtype=np.float32)  
-        if np.any(mask):
-            mask_spine_dist = d_spine[mask]
+        raise ValueError(
+            "Cannot build stage 4 spine distance channel: no paths from "
+            "surface maxima to the skeleton were found"
+        )
 
-            dist_range = mask_spine_dist.max() - mask_spine_dist.min()
-            if dist_range > 0:
-                d_spine_norm[mask] = (d_spine[mask] - mask_spine_dist.min()) / (mask_spine_dist.max() - mask_spine_dist.min() + 1e-8)
+    d_spine = edt.edt(spine_axes_inverted, anisotropy=res_nm).astype(np.float32)
+    d_spine_norm = np.zeros_like(d_spine, dtype=np.float32)
+    mask_spine_dist = d_spine[mask]
+    dist_range = mask_spine_dist.max() - mask_spine_dist.min()
+    if dist_range > 0:
+        d_spine_norm[mask] = (
+            d_spine[mask] - mask_spine_dist.min()
+        ) / (dist_range + 1e-8)
     # # Защита от пустых снимков
     # if len(skel_coords) > 0 and len(peak_coords) > 0:
     #     # Строим дерево поиска с учетом масштаба в нанометрах
@@ -219,7 +212,7 @@ def process_item(item, base_path):
 
     coords = np.argwhere(vsot_dendrite)
     if len(coords) == 0:
-        return 0  # Пустой снимок
+        raise ValueError("Cannot build stage 4 distance channels: VSOT mask is empty")
         
     # Запас (padding) равен размеру патча, чтобы повороты не обрезали дендрит
     pad_z, pad_y, pad_x = FRAGMENT_SHAPE

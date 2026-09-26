@@ -44,11 +44,12 @@ class QtStage4RunOptions(QGroupBox):
         )
 
         self.skeleton_prune_length = QDoubleSpinBox(self)
-        self.skeleton_prune_length.setRange(0.0, 6.0)
-        self.skeleton_prune_length.setSingleStep(0.1)
+        self.skeleton_prune_length.setRange(0.0, 20.0)
+        self.skeleton_prune_length.setSingleStep(0.5)
+        self.skeleton_prune_length.setDecimals(1)
         self.skeleton_prune_length.setSuffix(" µm")
         self.skeleton_prune_length.setValue(
-            float(params.get("stage4_skeleton_prune_length_um", 1.0))
+            float(params.get("stage4_skeleton_prune_length_um", 4.0))
         )
 
         layout = QtFormLayout()

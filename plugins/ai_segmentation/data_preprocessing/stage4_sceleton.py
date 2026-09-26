@@ -4,16 +4,30 @@ import numpy as np
 import kimimaro
 import networkx as nx
 from tifffile import imread, imwrite
-from scipy.ndimage import distance_transform_edt, find_objects
+from scipy.ndimage import distance_transform_edt, find_objects, label
 from skimage.segmentation import watershed
 
 # RES_YXZ = (500,100, 100)#(24, 24, 30)
 # RES_YXZ = (24, 24, 30)
 
 def _farthest_node(tree, source):
-    distances, paths = nx.single_source_dijkstra(tree, source, weight="weight")
-    target = max(distances, key=distances.get)
-    return target, paths[target]
+    """Find the farthest tree node in linear time and retain its parent map."""
+    parents = {source: None}
+    distances = {source: 0.0}
+    stack = [source]
+    target = source
+    while stack:
+        node = stack.pop()
+        node_distance = distances[node]
+        if node_distance > distances[target]:
+            target = node
+        for neighbor, edge_data in tree[node].items():
+            if neighbor in parents:
+                continue
+            parents[neighbor] = node
+            distances[neighbor] = node_distance + edge_data["weight"]
+            stack.append(neighbor)
+    return target, parents
 
 
 def _protected_main_paths(graph):
@@ -23,9 +37,48 @@ def _protected_main_paths(graph):
         component = graph.subgraph(component_nodes)
         start = next(iter(component_nodes))
         endpoint, _ = _farthest_node(component, start)
-        _, diameter_path = _farthest_node(component, endpoint)
+        opposite_endpoint, parents = _farthest_node(component, endpoint)
+        diameter_path = []
+        node = opposite_endpoint
+        while node is not None:
+            diameter_path.append(node)
+            node = parents[node]
         protected.update(diameter_path)
     return protected
+
+
+def _component_diameter(graph, component_nodes):
+    """Return the weighted diameter path and its physical length in nm."""
+    component = graph.subgraph(component_nodes)
+    start = next(iter(component_nodes))
+    endpoint, _ = _farthest_node(component, start)
+    opposite_endpoint, parents = _farthest_node(component, endpoint)
+    path = []
+    node = opposite_endpoint
+    while node is not None:
+        path.append(node)
+        node = parents[node]
+    length_nm = sum(
+        float(component[node_a][node_b]["weight"])
+        for node_a, node_b in zip(path, path[1:])
+    )
+    return path, length_nm
+
+
+def _leaf_branch_length(graph, leaf):
+    """Measure a leaf branch up to its first junction or opposite endpoint."""
+    previous = None
+    current = leaf
+    length_nm = 0.0
+    while True:
+        next_nodes = [node for node in graph.neighbors(current) if node != previous]
+        if not next_nodes:
+            return length_nm
+        next_node = next_nodes[0]
+        length_nm += float(graph[current][next_node]["weight"])
+        previous, current = current, next_node
+        if graph.degree(current) != 2:
+            return length_nm
 
 
 def prune_and_segment_skeleton(
@@ -34,20 +87,45 @@ def prune_and_segment_skeleton(
     volume_shape=None,
     min_length_nm=1000,
     border_margin_voxels=2,
+    vertex_offset_nm=None,
+    min_component_length_nm=None,
 ):
-    """Prune short side branches without eroding the dendrite main path."""
-    vertices = skel.vertices
+    """Drop degenerate components and prune short side branches in physical units."""
+    vertices = np.asarray(skel.vertices)
+    if vertex_offset_nm is not None:
+        vertices = vertices + np.asarray(vertex_offset_nm, dtype=vertices.dtype)
     G = nx.Graph()
     G.add_nodes_from(range(len(vertices)))
-    for node_a, node_b in skel.edges:
-        G.add_edge(
-            int(node_a),
-            int(node_b),
-            weight=float(np.linalg.norm(vertices[node_a] - vertices[node_b])),
+    edges = np.asarray(skel.edges, dtype=np.int64)
+    if edges.size:
+        edge_lengths = np.linalg.norm(
+            vertices[edges[:, 0]] - vertices[edges[:, 1]], axis=1
+        )
+        G.add_weighted_edges_from(
+            (int(edge[0]), int(edge[1]), float(weight))
+            for edge, weight in zip(edges, edge_lengths)
         )
 
     # Break cycles by physical edge length, then protect the main geodesic path.
-    G = nx.minimum_spanning_tree(G, weight="weight")
+    if G.number_of_edges() and not nx.is_forest(G):
+        G = nx.minimum_spanning_tree(G, weight="weight")
+
+    # Крошечный изолированный фрагмент скелета — это, как правило, шум, а не
+    # ствол дендрита. Удаляем  этот компонент перед расчетом защищаемых основных путей или граничных конечных точек.
+    component_threshold_nm = (
+        float(min_length_nm)
+        if min_component_length_nm is None
+        else float(min_component_length_nm)
+    )
+    degenerate_nodes = set()
+    for component_nodes in list(nx.connected_components(G)):
+        _, diameter_nm = _component_diameter(G, component_nodes)
+        if diameter_nm < component_threshold_nm:
+            degenerate_nodes.update(component_nodes)
+    G.remove_nodes_from(degenerate_nodes)
+    if G.number_of_nodes() == 0:
+        return [], vertices
+
     protected_nodes = _protected_main_paths(G)
 
     # An endpoint at the acquisition boundary may be a truncated dendrite trunk,
@@ -61,7 +139,13 @@ def prune_and_segment_skeleton(
             | (voxel_coords >= upper - border_margin_voxels),
             axis=1,
         )
-        boundary_nodes.update(np.flatnonzero(near_boundary).tolist())
+        boundary_nodes.update(
+            node
+            for node in np.flatnonzero(near_boundary).tolist()
+            if node in G
+            and G.degree(node) == 1
+            and _leaf_branch_length(G, node) >= float(min_length_nm)
+        )
 
     # Repeated pruning is safe now because the component diameter and boundary
     # endpoints are protected. Only short branches attached to that backbone go.
@@ -107,6 +191,19 @@ def prune_and_segment_skeleton(
     segments = list(nx.connected_components(G))
     return segments, vertices
 
+
+def _foreground_slices(mask, margin=4):
+    objects = find_objects(mask)
+    if not objects or objects[0] is None:
+        return None
+    return tuple(
+        slice(
+            max(0, axis_slice.start - margin),
+            min(axis_size, axis_slice.stop + margin),
+        )
+        for axis_slice, axis_size in zip(objects[0], mask.shape)
+    )
+
 def scelete(json_path=None, base_path="../../", do_segmentation=True):
     with open(json_path, 'r') as f:
         config = json.load(f)
@@ -116,13 +213,12 @@ def scelete(json_path=None, base_path="../../", do_segmentation=True):
         return os.path.normpath(os.path.join(base_path, p))
     
     for item in config["data"]:
-        print(f"\n--- Обработка: {item['name']} ---")
+        print(f"\n--- Обработка: {item['name']} ---", flush=True)
         # 1. Загрузка исходников
         area_path = resolve(item.get('area_of_interest'))
         area = None
         if area_path and os.path.exists(area_path):
-            area = imread(area_path).astype(np.uint8)
-            area[area > 0] = 1    
+            area = imread(area_path) > 0
 
         input_path = (
             item.get("stage3_mask")
@@ -146,13 +242,49 @@ def scelete(json_path=None, base_path="../../", do_segmentation=True):
         res_x = scale_um[2] * 1000
         res_zyx = (res_z, res_y, res_x)
 
-        vol = imread(input_file) 
-        if area is not None: vol = vol * area
-
-        labels = (vol > 0).astype(np.uint32)
+        foreground = imread(input_file) > 0
+        if area is not None:
+            foreground &= area
+        crop_slices = _foreground_slices(
+            foreground, margin=int(item.get("skeleton_crop_margin_voxels", 4))
+        )
+        if crop_slices is None:
+            print("Скелет не найден: входная маска пуста!", flush=True)
+            continue
+        crop_offset_voxels = np.asarray(
+            [axis_slice.start for axis_slice in crop_slices], dtype=np.int64
+        )
+        labels_crop = np.empty(
+            foreground[crop_slices].shape, dtype=np.uint32
+        )
+        component_count = label(
+            foreground[crop_slices],
+            structure=np.ones((3, 3, 3), dtype=np.uint8),
+            output=labels_crop,
+        )
+        component_sizes = np.bincount(labels_crop.ravel())
+        object_ids = np.flatnonzero(component_sizes >= 100)
+        object_ids = object_ids[object_ids != 0]
+        retained_components = int(object_ids.size)
+        print(
+            "Kimimaro skeletonization: full shape "
+            + str(tuple(foreground.shape))
+            + ", ROI shape "
+            + str(tuple(labels_crop.shape))
+            + ", foreground voxels "
+            + str(int(np.count_nonzero(labels_crop)))
+            + ", components "
+            + str(component_count)
+            + ", components >= 100 voxels "
+            + str(retained_components),
+            flush=True,
+        )
+        if retained_components == 0:
+            print("Скелет не найден: все компоненты меньше 100 вокселей!", flush=True)
+            continue
 
         skels = kimimaro.skeletonize(
-            labels,
+            labels_crop,
             teasar_params={
                 'scale': 4,
                 'const': 1000, # physical units
@@ -164,7 +296,7 @@ def scelete(json_path=None, base_path="../../", do_segmentation=True):
                 'soma_invalidation_const': 300, # physical units
                 'max_paths': None, # default None
             },
-            # object_ids=[ ... ], # process only the specified labels
+            object_ids=object_ids.tolist(),
             # extra_targets_before=[ (27,33,100), (44,45,46) ], # target points in voxels
             # extra_targets_after=[ (27,33,100), (44,45,46) ], # target points in voxels
             dust_threshold=100, # skip connected components with fewer than this many voxels
@@ -174,71 +306,79 @@ def scelete(json_path=None, base_path="../../", do_segmentation=True):
             fill_holes=False, # default False
             fix_avocados=False, # default False
             progress=True, # default False, show progress bar
-            parallel=10, # <= 0 all cpu, 1 single process, 2+ multiprocess
+            parallel=int(item.get("skeleton_parallel", 3)),
             parallel_chunk_size=100, # how many skeletons to process before updating progress bar
         )
-        print(len(skels))
+        print("Kimimaro finished; skeleton objects: " + str(len(skels)), flush=True)
 
         if not skels:
             print("Скелет не найден!")
             continue
 
         # 3. СОХРАНЕНИЕ ПОЛНОГО СКЕЛЕТА (ds_skeleton)
-        binimg_skel = np.zeros(labels.shape, dtype=np.uint8)
+        binimg_skel = np.zeros(foreground.shape, dtype=np.uint8)
         if do_segmentation:
             prune_length_nm = float(item.get("skeleton_prune_length_nm", 1000))
             print(
                 "Защита главного пути и фильтрация боковых ветвей < "
                 f"{prune_length_nm / 1000:.2f} мкм..."
             )
-            markers = np.zeros(labels.shape, dtype=np.uint16)
+            markers = np.zeros(foreground.shape, dtype=np.uint16)
             segment_id = 0
+            res_zyx_array = np.asarray(res_zyx, dtype=np.float64)
+            vertex_offset_nm = crop_offset_voxels * res_zyx_array
             for skel in skels.values():
                 segments, vertices = prune_and_segment_skeleton(
                     skel,
                     res_zyx,
-                    volume_shape=labels.shape,
+                    volume_shape=foreground.shape,
                     min_length_nm=prune_length_nm,
+                    vertex_offset_nm=vertex_offset_nm,
                 )
                 for node_set in segments:
                     segment_id += 1
-                    for node in node_set:
-                        idx = (vertices[node] / np.array(res_zyx)).astype(int)
-                        if (0 <= idx[0] < markers.shape[0] and
-                            0 <= idx[1] < markers.shape[1] and
-                            0 <= idx[2] < markers.shape[2]):
-                            binimg_skel[idx[0], idx[1], idx[2]] = 255
-                            markers[idx[0], idx[1], idx[2]] = segment_id
+                    nodes = np.fromiter(node_set, dtype=np.int64)
+                    coordinates = (vertices[nodes] / res_zyx_array).astype(np.int64)
+                    valid = np.all(
+                        (coordinates >= 0)
+                        & (coordinates < np.asarray(markers.shape)),
+                        axis=1,
+                    )
+                    marker_indices = tuple(coordinates[valid].T)
+                    binimg_skel[marker_indices] = 255
+                    markers[marker_indices] = segment_id
             imwrite(skel_out, binimg_skel, photometric='minisblack')
             print(f"Полный скелет сохранен: {skel_out}")
             print("Распределение вокселей по сегментам (Watershed)...")
         # если очень большой снимок, то памяти не хватает,выделяем только нужную часть и считаем на ней, потом вставляем обратно
 #         # 1. Находим минимальную "коробочку" (Bounding Box), куда влезает весь дендрит
-            slices = find_objects(labels > 0)[0] 
-
-            # 2. Вырезаем маленькие кусочки из огромных массивов
-            labels_crop = labels[slices]
-            markers_crop = markers[slices]
+            mask_crop = foreground[crop_slices]
+            markers_crop = markers[crop_slices]
 
             # 3. Считаем SciPy EDT и Watershed только на маленьком кусочке!
-            distance_crop = distance_transform_edt(labels_crop > 0, sampling=res_zyx)
-            seg_crop = watershed(-distance_crop, markers_crop, mask=(labels_crop > 0))
+            distance_crop = distance_transform_edt(mask_crop, sampling=res_zyx)
+            seg_crop = watershed(-distance_crop, markers_crop, mask=mask_crop)
 
             # 4. Создаем пустой черный объем оригинального размера и вставляем туда результат
-            segmented_volume = np.zeros(labels.shape, dtype=np.uint16)
-            segmented_volume[slices] = seg_crop
+            segmented_volume = np.zeros(foreground.shape, dtype=np.uint16)
+            segmented_volume[crop_slices] = seg_crop
 
             imwrite(seg_out, segmented_volume.astype(np.uint16), photometric='minisblack')
             print(f"Готово! Результат сохранен в {seg_out}")
         else:
             print("Сохранение сырого полного скелета (без сегментации)...")
+            res_zyx_array = np.asarray(res_zyx, dtype=np.float64)
+            vertex_offset_nm = crop_offset_voxels * res_zyx_array
             for skel in skels.values():
-                verts_all = (skel.vertices / np.array(res_zyx)).astype(int)
-                for v in verts_all:
-                    if (0 <= v[0] < binimg_skel.shape[0] and
-                        0 <= v[1] < binimg_skel.shape[1] and
-                        0 <= v[2] < binimg_skel.shape[2]):
-                        binimg_skel[v[0], v[1], v[2]] = 255
+                verts_all = (
+                    (np.asarray(skel.vertices) + vertex_offset_nm) / res_zyx_array
+                ).astype(np.int64)
+                valid = np.all(
+                    (verts_all >= 0)
+                    & (verts_all < np.asarray(binimg_skel.shape)),
+                    axis=1,
+                )
+                binimg_skel[tuple(verts_all[valid].T)] = 255
             imwrite(skel_out, binimg_skel, photometric='minisblack')
             print(f"Полный скелет сохранен: {skel_out}")        
 

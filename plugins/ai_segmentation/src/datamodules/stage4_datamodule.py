@@ -102,9 +102,9 @@ class Stage4DataModule(pl.LightningDataModule):
 	def predict_dataloader(self):
 		return DataLoader(
 			self.predict_ds,
-			batch_size=4,  # Для инференса по одному патчу (или больше, если влезет)
-			# num_workers=self.hparams.num_workers,
-			num_workers=4,
+			batch_size=self.hparams.batch_size,
+			num_workers=self.hparams.num_workers,
 			shuffle=False,
-			persistent_workers=True
+			pin_memory=True,
+			persistent_workers=self.hparams.num_workers > 0,
 		)

@@ -349,6 +349,8 @@ class SegmentationProject(ProjectBase):
             2,
             (0, 1, 2),
             ("z", "y", "x"),
+            microns_per_voxel=self._project_info.real_scale,
+            world_scale=self._project_info.scale,
         )
         self._viewer = QtViewer(self._viewer_model, self._window._qt_window)
         self._viewer.setFocusPolicy(Qt.FocusPolicy.StrongFocus)

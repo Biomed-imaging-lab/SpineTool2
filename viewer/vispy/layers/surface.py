@@ -21,6 +21,8 @@ class VispySurfaceLayer(VispyBaseLayer):
         self.layer.contrast_limits_.connect(self._on_contrast_limits_change)
         self.layer.gamma_.connect(self._on_gamma_change)
         self.layer.shading_.connect(self._on_shading_change)
+        self.layer.show_edges_.connect(self._on_edge_style_change)
+        self.layer.edge_color_.connect(self._on_edge_style_change)
         self.layer.texture_.connect(self._on_texture_change)
         self.layer.texcoords_.connect(self._on_texture_change)
         self.layer.data_.connect(self._on_data_change)
@@ -123,9 +125,15 @@ class VispySurfaceLayer(VispyBaseLayer):
             self.node.shading = shading
         self.node.update()
 
+    def _on_edge_style_change(self, *args):
+        self.node.wireframe_filter.enabled = self.layer.show_edges
+        self.node.wireframe_filter.color = self.layer.edge_color
+        self.node.update()
+
     def reset(self):
         super().reset()
         self._on_colormap_change()
         self._on_contrast_limits_change()
         self._on_shading_change()
+        self._on_edge_style_change()
         self._on_texture_change()

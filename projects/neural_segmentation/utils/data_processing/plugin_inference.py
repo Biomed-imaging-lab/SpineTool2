@@ -8,10 +8,37 @@ from typing import Optional
 import numpy as np
 from tifffile import imread
 
+from projects.neural_segmentation.utils.data_processing.mask_corrections import (
+    apply_binary_label_corrections,
+    resize_user_corrections,
+)
+
 from projects.segmentation.utils.data_processing.result import ProgressUpdate, Result
 
 
 PROGRESS_PREFIX = "SPINETOOL_PROGRESS "
+
+
+def _resolve_project_path(request: dict, key: str) -> str:
+    value = str(request.get(key, "")).strip()
+    if not value:
+        return ""
+    drive, _ = os.path.splitdrive(value)
+    if bool(drive) or value.startswith("\\\\") or (
+        len(value) >= 3
+        and value[0].isalpha()
+        and value[1] == ":"
+        and value[2] in "\\/"
+    ):
+        return os.path.normpath(value)
+    project_root = str(request.get("project_root", "")).strip()
+    if not project_root:
+        raise FileNotFoundError(
+            "Cannot resolve project-relative path '"
+            + value
+            + "'. Specify the path to project_description.json in the project settings."
+        )
+    return os.path.abspath(os.path.join(project_root, value.lstrip("/\\")))
 
 
 def _normalize_probability(volume: np.ndarray) -> np.ndarray:
@@ -161,6 +188,7 @@ def run_ai_spines_inference(
     threshold_mode: str = "trunk",
     additional_files: Optional[dict] = None,
     process_environment: Optional[dict[str, str]] = None,
+    user_corrections: Optional[dict[str, np.ndarray]] = None,
 ):
     try:
         stage = plugin_request.get("stage", "")
@@ -210,6 +238,21 @@ def run_ai_spines_inference(
             )
             return
 
+        if returncode not in (0, None):
+            queue_out.put(
+                Result(
+                    np.zeros(_fallback_shape(expected_shape), dtype=np.uint8),
+                    metadata,
+                    error=(
+                        "Plugin runner exited with code "
+                        + str(returncode)
+                        + ".\n"
+                        + stdout
+                    ),
+                )
+            )
+            return
+
         if not os.path.isfile(plugin_response_path):
             message = (
                 "Plugin runner failed without response file. "
@@ -243,6 +286,14 @@ def run_ai_spines_inference(
         produced_probability_path = response.get(
             "output_probability_path", output_probability_path
         )
+        produced_drive, _ = os.path.splitdrive(str(produced_probability_path))
+        if not produced_drive and not str(produced_probability_path).startswith("\\\\"):
+            produced_probability_path = os.path.abspath(
+                os.path.join(
+                    str(plugin_request.get("project_root", "")),
+                    str(produced_probability_path).lstrip("/\\"),
+                )
+            )
         if not os.path.isfile(produced_probability_path):
             queue_out.put(
                 Result(
@@ -286,12 +337,21 @@ def run_ai_spines_inference(
             spine_threshold_0_1=spine_threshold_0_1,
             threshold_mode=threshold_mode,
             base_mask=(
-                imread(plugin_request["stage3_mask_path"]) > 0
+                imread(_resolve_project_path(plugin_request, "stage3_mask_path")) > 0
                 if label_mode == "stem_spines"
                 and plugin_request.get("stage3_mask_path")
                 else None
             ),
         )
+        if user_corrections is not None and label_mode == "binary":
+            resized_corrections = resize_user_corrections(
+                user_corrections, tuple(labels.shape)
+            )
+            labels, correction_count = apply_binary_label_corrections(
+                labels, resized_corrections
+            )
+            if correction_count:
+                metadata["user_corrections_applied"] = correction_count
         _put_progress(queue_out, 100, "stage " + str(stage) + ": finished")
         queue_out.put(Result(labels, metadata))
     except Exception as err:
