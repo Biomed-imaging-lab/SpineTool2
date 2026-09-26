@@ -197,37 +197,30 @@ The CGAL archive in the Windows instructions cannot be used on a Mac. You need a
 
 The build must contain `.py` wrappers, **26 `_CGAL_*.so` extensions**, internal CGAL libraries, and their `.dylib` dependencies. The `.cxx` files are source files and cannot replace the `.so` extensions.
 
-Extract the prepared macOS packages into `external/cgal/intel` and `external/cgal/arm`, relative to the project root. Each package should have this layout:
+The repository includes ready-to-install Python 3.10 packages:
 
-```text
-external/cgal/<variant>/lib/python3.10/site-packages/CGAL/
-external/cgal/<variant>/lib/*.dylib
-```
+- [CGAL_macos_intel.zip](https://github.com/Biomed-imaging-lab/SpineTool2/releases/download/0.2/CGAL_macos_intel.zip): macOS Intel (`x86_64`).
+- [CGAL_macos_arm.zip](https://github.com/Biomed-imaging-lab/SpineTool2/releases/download/0.2/CGAL_macos_arm.zip): macOS Apple Silicon (`arm64`).
 
-If you build CGAL yourself, follow the build instructions in the [cgal-swig-bindings repository](https://github.com/DariaWelt/cgal-swig-bindings). To make skeletonization compatible with `Polylines`, add `%import "SWIG_CGAL/Polygon_mesh_processing/CGAL_Polygon_mesh_processing.i"` after `%include "std_vector.i"` in `SWIG_CGAL/User_packages/Surface_mesh_skeletonization/CGAL_Surface_mesh_skeletonization.i` before building.
+Both contain a `CGAL/` directory with 26 extensions, Python wrappers, 19 bundled dynamic libraries, and the `Polylines` skeletonization fix. The Intel archive passes the CGAL compatibility tests. ARM architecture and library dependencies were checked statically; native ARM execution has not been verified.
 
-For packages built without that fix, place the corrected `_CGAL_Surface_mesh_skeletonization.so` in `external/cgal-fixes/intel` or `external/cgal-fixes/arm`. The corrected extension must match the package's architecture and Python version. If your package already includes the fix, skip the final copy command below.
-
-Run these commands from the project root:
+Run these commands from the project root with the intended Python environment active:
 
 ```bash
+shasum -a 256 -c CGAL_macos_SHA256SUMS
 ARCH=$(python -c 'import platform; print(platform.machine())')
 case "$ARCH" in
-  x86_64) VARIANT=intel ;;
-  arm64) VARIANT=arm ;;
+  x86_64) CGAL_ARCHIVE=CGAL_macos_intel.zip ;;
+  arm64) CGAL_ARCHIVE=CGAL_macos_arm.zip ;;
   *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
-CGAL_DIST="./external/cgal/$VARIANT"
-# Back up the existing package before replacing files.
-if [ -d CGAL ]; then cp -R CGAL "CGAL.backup.$(date +%Y%m%d-%H%M%S)"; fi
-mkdir -p CGAL
-cp -p "$CGAL_DIST"/lib/python3.10/site-packages/CGAL/*.py CGAL/
-cp -p "$CGAL_DIST"/lib/python3.10/site-packages/CGAL/*.so CGAL/
-cp -p "$CGAL_DIST"/lib/*.dylib CGAL/
-# Apply only if your package needs the separate Polylines fix:
-# cp -p "./external/cgal-fixes/$VARIANT/_CGAL_Surface_mesh_skeletonization.so" CGAL/
+# Move the existing package aside to avoid mixing architectures.
+if [ -d CGAL ]; then mv CGAL "CGAL.backup.$(date +%Y%m%d-%H%M%S)"; fi
+unzip "$CGAL_ARCHIVE"
 python -c 'from CGAL.CGAL_Kernel import Point_3; print(Point_3(1, 2, 3))'
 ```
+
+If you build CGAL yourself, follow the [cgal-swig-bindings instructions](https://github.com/DariaWelt/cgal-swig-bindings). To make skeletonization compatible with `Polylines`, add `%import "SWIG_CGAL/Polygon_mesh_processing/CGAL_Polygon_mesh_processing.i"` after `%include "std_vector.i"` in `SWIG_CGAL/User_packages/Surface_mesh_skeletonization/CGAL_Surface_mesh_skeletonization.i` before building. The included archives already have this fix.
 
 This package uses library search paths relative to the extensions. Copying files alone may not be sufficient for another build: inspect its dependencies with `otool -L CGAL/_CGAL_Kernel.so` and its architecture with `file CGAL/_CGAL_Kernel.so`.
 
