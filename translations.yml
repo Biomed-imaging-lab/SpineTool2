@@ -463,9 +463,9 @@ translations:
   "z display scale":
     en: "Z display scale modifier:"
     ru: "Модификатор масштаба отображения по Z:"
-  "cuda":
-    en: "Use CUDA instead of CPU (it will be faster)"
-    ru: "Использовать CUDA место CPU (будет выполняться быстрее)"
+  "gpu acceleration":
+    en: "Use GPU acceleration"
+    ru: "Использовать ускорение на видеокарте"
 
 
   # preview options widget

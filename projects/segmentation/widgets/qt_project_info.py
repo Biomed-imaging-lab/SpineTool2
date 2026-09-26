@@ -37,9 +37,13 @@ class QtProjectInfo(QScrollArea):
         self._z_scale = QtDoubleSpinBox(self._project_info.displayed_scale[2])
         self._z_scale.editingFinished.connect(self.change_scale)
 
-        self._cuda_checkbox = QCheckBox()
-        self._cuda_label = QtLabel("cuda")
-        self._cuda_checkbox.toggled.connect(self._on_cuda_changed)
+        self._gpu_checkbox = QCheckBox()
+        self._gpu_label = QtLabel("gpu acceleration")
+        # Saved CUDA/MPS choices represent enabled acceleration in this UI.
+        use_gpu = self._project_info.device in {"auto", "cuda", "mps"}
+        self._gpu_checkbox.setChecked(use_gpu)
+        self._project_info.device = "auto" if use_gpu else "cpu"
+        self._gpu_checkbox.toggled.connect(self._on_gpu_changed)
 
         project_info_widget = QWidget()
         form_layout = QtFormLayout()
@@ -66,15 +70,15 @@ class QtProjectInfo(QScrollArea):
         form_layout.addRow(QtLabel("z display scale", {"ru"}), self._z_scale)
 
         form_layout.addRow(QtHLine())
-        form_layout.addRow(self._cuda_label, self._cuda_checkbox)
+        form_layout.addRow(self._gpu_label, self._gpu_checkbox)
 
         project_info_widget.setLayout(form_layout)
         self.setWidget(project_info_widget)
         self.setWidgetResizable(True)
 
-    def toggle_cuda_checkbox(self, checked: bool) -> None:
-        self._cuda_checkbox.setVisible(checked)
-        self._cuda_label.setVisible(checked)
+    def toggle_gpu_checkbox(self, visible: bool) -> None:
+        self._gpu_checkbox.setVisible(visible)
+        self._gpu_label.setVisible(visible)
 
     def rename(self) -> None:
         self._new_name = self._project_name_line.text()
@@ -97,9 +101,9 @@ class QtProjectInfo(QScrollArea):
             ]
             self.scale_changed_.emit(self._project_info.scale)
 
-    def _on_cuda_changed(self) -> None:
-        if self._cuda_checkbox.isChecked():
-            self._project_info.device = "cuda"
+    def _on_gpu_changed(self) -> None:
+        if self._gpu_checkbox.isChecked():
+            self._project_info.device = "auto"
         else:
             self._project_info.device = "cpu"
         self.checkbox_changed_.emit(self._project_info.device)

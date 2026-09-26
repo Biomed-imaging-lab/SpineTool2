@@ -137,17 +137,50 @@ Do not set `CONDA_SUBDIR=osx-64` when creating a native ARM environment. If it r
 
 ### 3. Install Python dependencies and PyTorch
 
-The pip dependency lists are shared with Windows. The `PyQt5-Qt5==5.15.2` pin applies only to Windows; on macOS, PyQt5 selects a compatible Qt wheel for the architecture. Install PyTorch separately to select the platform and CPU/CUDA build.
+The pip dependency lists are shared with Windows. The `PyQt5-Qt5==5.15.2` pin applies only to Windows; on macOS, PyQt5 selects a compatible Qt wheel for the architecture. Install PyTorch separately for your architecture and backend.
 
 ```bash
 python -m pip install -r pip_requirements.txt
+# Intel / x86_64 (CPU):
 python -m pip install 'torch==2.2.2'
+# Apple Silicon / native arm64 (MPS): use this instead of the Intel command:
+# python -m pip install --upgrade 'torch==2.11.0'
 python -m pip install -r plugins/ai_segmentation/requirements.txt
 ```
 
-PyTorch 2.2.x is the last official release series supporting macOS Intel ([PyTorch announcement](https://pytorch.org/blog/pytorch2-2/)). Version 2.2.2 is also pinned for ARM to use the same version on both architectures; ARM execution has not yet been verified.
+PyTorch 2.2.x is the last official release series supporting macOS Intel ([PyTorch announcement](https://pytorch.org/blog/pytorch2-2/)). Keep 2.2.2 for Intel CPU inference. For Apple Silicon MPS, use a native `arm64` environment and the 2.11.0 command above. The ARM/PyTorch 2.11.0 combination has not yet been validated with the full application.
 
-On macOS, skip the `cu117` CUDA wheel commands and the Windows CUDA Toolkit installation. The current inference entry points select `cpu`, `cuda`, or `auto`; `auto` selects CPU on a Mac. Although PyTorch supports MPS, this code does not select that backend. Disable CUDA and CUDA mixed precision in the interface.
+#### MPS setup and verification
+
+MPS is included in the macOS PyTorch package; there is no separate MPS pip package or CUDA toolkit to install. For the documented PyTorch 2.11.0 setup, Apple lists Apple Silicon, macOS 14.0 or later, Python 3.10 or later, and Xcode command-line tools ([Apple installation guide](https://developer.apple.com/metal/pytorch/)). Install the tools if missing:
+
+```bash
+xcode-select --install
+```
+
+If you previously installed PyTorch 2.2.2 on Apple Silicon, activate `spinetool2` and run the ARM upgrade command above. This project's models use 3D convolutions, which [PyTorch 2.2.2 does not support on MPS](https://github.com/pytorch/pytorch/blob/v2.2.2/aten/src/ATen/native/mps/operations/Convolution.mm#L70), even when MPS is reported as available.
+
+Check using the same interpreter configured as **AI python executable**:
+
+```bash
+python - <<'PYTHON'
+import platform
+import torch
+print("Architecture:", platform.machine())
+print("PyTorch:", torch.__version__)
+print("MPS built:", torch.backends.mps.is_built())
+print("MPS available:", torch.backends.mps.is_available())
+if torch.backends.mps.is_available():
+    with torch.inference_mode():
+        layer = torch.nn.Conv3d(1, 2, kernel_size=3).to("mps")
+        result = layer(torch.ones(1, 1, 8, 8, 8, device="mps"))
+        print("Conv3d check:", result.cpu().shape)
+PYTHON
+```
+
+Both inference entry points accept `cpu`, `cuda`, `mps`, and `auto` in the request's `device` field. On macOS, `auto` selects MPS when available, otherwise CPU. Explicit `mps` raises an error if unavailable; explicit `cpu` stays on CPU. This availability fallback does not catch unsupported model operations. A successful check above does not replace full model validation.
+
+Enable **Use GPU acceleration** in the project interface to send `device="auto"`: macOS uses MPS when available, other platforms use CUDA when available, and otherwise inference uses CPU. Uncheck it to force CPU. Saved `cuda` or `mps` choices are displayed as enabled acceleration and normalized to `auto` when opening the project. Keep CUDA mixed precision disabled on macOS; that option applies only to CUDA.
 
 ### 4. Install Easy3D for macOS
 
@@ -202,7 +235,7 @@ This package uses library search paths relative to the extensions. Copying files
 
 ```bash
 python -m pip check
-python -c 'import numpy, torch, easy3d; from CGAL.CGAL_Kernel import Point_3; print(numpy.__version__, torch.__version__, Point_3(0, 0, 0)); print("CUDA:", torch.cuda.is_available())'
+python -c 'import numpy, torch, easy3d; from CGAL.CGAL_Kernel import Point_3; print(numpy.__version__, torch.__version__, Point_3(0, 0, 0)); print("MPS:", torch.backends.mps.is_available())'
 PYTHONPATH="$PWD" python -m unittest discover -s tests -t tests --quiet
 ```
 
@@ -294,7 +327,7 @@ These additional files are not required to open the main window. Full inference 
 
    For the conda setup, select the wrapper, not the binary inside `external/octave-env/bin`. For Homebrew, use the full path returned by `command -v octave-cli`, without `.exe`.
 
-5. Select CPU and disable CUDA and CUDA mixed precision. Run `python run.py`, then start the required stage through the interface.
+5. Run `python run.py`. Enable **Use GPU acceleration** for automatic MPS selection on a supported Mac, or disable it to use CPU. Keep CUDA mixed precision disabled on macOS, then start the required stage. Check MPS first as described in **MPS setup and verification** above.
 
 VSOT includes MATLAB/MEX components; Windows MEX binaries do not run on macOS. `stage4_vsot.py` already provides an Octave compatibility backend for some missing MATLAB functions. This does not establish that the complete VSOT pipeline works on all data: run a full validation after installing the models and Octave.
 
@@ -316,7 +349,9 @@ VSOT includes MATLAB/MEX components; Windows MEX binaries do not run on macOS. `
 - `cannot import name '_CGAL_Kernel'`: check that the `.so` extensions are present, Python is 3.10, and architectures match. A local `CGAL` directory can shadow the package installed in the environment.
 - `Library not loaded`: check that all required `.dylib` files are copied and library search paths are portable.
 - `No module named 'CGAL'` when running tests from `tests`: set `PYTHONPATH` to the project root as shown above.
-- `CUDA requested but is not available`: select CPU; the Windows CUDA commands do not apply to a Mac.
+- `CUDA requested but is not available`: use **Use GPU acceleration** for automatic backend selection, or use `auto` / `mps` in an inference request; the Windows CUDA commands do not apply to a Mac.
+- `MPS requested but is not available`: run the MPS check above with the configured AI interpreter and verify the macOS version, native ARM architecture, and PyTorch installation. Use `cpu` if MPS is unavailable.
+- `Conv3D is not supported on MPS`: on Apple Silicon, replace PyTorch 2.2.2 with the documented ARM version above. For Intel with PyTorch 2.2.2, use CPU.
 - `Numpy is not available`: keep NumPy 1.26.4 when using PyTorch 2.2.2:
 
   ```bash

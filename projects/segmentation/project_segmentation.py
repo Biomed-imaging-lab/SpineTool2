@@ -373,7 +373,7 @@ class SegmentationProject(ProjectBase):
         self._set_shortcuts()
         self._load_initial_state()
 
-        self._project_info_widget.toggle_cuda_checkbox(False)
+        self._project_info_widget.toggle_gpu_checkbox(False)
 
     def _check_layer_loader_communication_queue(self) -> None:
         if self._layer_loader_communication_queue_in.empty():

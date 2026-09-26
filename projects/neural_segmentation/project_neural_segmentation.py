@@ -213,7 +213,7 @@ class NeuralSegmentationProject(SegmentationProject):
         super().__init__(window, project_info, settings or SegmentationSettings.instance())
         self._ensure_neural_storage(self._project_info.folder)
         self._ensure_models_storage()
-        self._project_info_widget.toggle_cuda_checkbox(True)
+        self._project_info_widget.toggle_gpu_checkbox(True)
         self._stage4_run_options = QtStage4RunOptions(
             self._neural_settings.state,
             self._qt_next_stage_list,
