@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 from datetime import datetime
 from itertools import chain, product
 from multiprocessing import Pool, Process, Queue
@@ -50,7 +51,7 @@ def _get_medial_and_zoomed_image(
         medial_file = additional_files.get("medial", None)
         new_medial = not bool(medial_file)
         if medial_file:
-            medial = np.fromfile(folder + medial_file, dtype=np.uint16)
+            medial = np.fromfile(resolve_project_path(folder, medial_file), dtype=np.uint16)
             medial = np.reshape(medial, (-1, 3))
         else:
             labels, shaft_label = find_main_label(binarization)
@@ -441,7 +442,7 @@ def run_one_point_restoration(
             + str(datetime.now()).replace(".", "_").replace(" ", "_").replace(":", "_")
             + ".bin"
         )
-        medial.tofile(folder + medial_file)
+        medial.tofile(resolve_project_path(folder, medial_file))
     else:
         medial_file = additional_files["medial"]
 

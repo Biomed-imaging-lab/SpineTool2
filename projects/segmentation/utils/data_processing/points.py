@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 from datetime import datetime
 from multiprocessing import Process, Queue
 from time import sleep
@@ -67,7 +68,7 @@ def _get_medial(
 
         medial_file = additional_files.get("medial", None)
         if medial_file:
-            medial = np.fromfile(folder + medial_file, dtype=np.uint16)
+            medial = np.fromfile(resolve_project_path(folder, medial_file), dtype=np.uint16)
             medial = np.reshape(medial, (-1, 3))
             queue.put((labels, used_labels, medial, zoom, False, ""))
         else:
@@ -221,7 +222,7 @@ def find_points(
                 .replace(":", "_")
                 + ".bin"
             )
-            medial.tofile(folder + medial_file)
+            medial.tofile(resolve_project_path(folder, medial_file))
         else:
             medial_file = additional_files["medial"]
 

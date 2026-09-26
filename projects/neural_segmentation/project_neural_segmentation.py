@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 import json
 import os
 import re
@@ -212,7 +213,7 @@ class NeuralSegmentationProject(SegmentationProject):
         super().__init__(window, project_info, settings or SegmentationSettings.instance())
         self._ensure_neural_storage(self._project_info.folder)
         self._ensure_models_storage()
-        self._project_info_widget.toggle_cuda_checkbox(True)
+        self._project_info_widget.toggle_gpu_checkbox(True)
         self._stage4_run_options = QtStage4RunOptions(
             self._neural_settings.state,
             self._qt_next_stage_list,
@@ -564,13 +565,7 @@ class NeuralSegmentationProject(SegmentationProject):
             return resolve_path(relative_or_abs)
         if not relative_or_abs:
             return ""
-        value = os.path.normpath(str(relative_or_abs))
-        drive, _ = os.path.splitdrive(value)
-        if drive or value.startswith("\\\\"):
-            return os.path.abspath(value)
-        return os.path.abspath(
-            os.path.join(self._project_info.folder, value.lstrip("/\\"))
-        )
+        return resolve_project_path(self._project_info.folder, relative_or_abs)
 
     def _read_probability(
         self, file: str, expected_shape: Optional[tuple] = None
@@ -1595,7 +1590,7 @@ class NeuralSegmentationProject(SegmentationProject):
             return
         probability_file = self._project_path(probability_path)
         if not os.path.isfile(probability_file):
-            show_warning("Probability volume file was not found")
+            show_warning("Probability volume file was not found: " + probability_file)
             return
         probability = self._read_probability(
             probability_file, expected_shape=tuple(layer.data.shape)

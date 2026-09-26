@@ -53,6 +53,12 @@ def _resolve_device(device: str) -> str:
         return "cuda"
     if value == "cpu":
         return "cpu"
+    if value == "mps":
+        if not torch.backends.mps.is_available():
+            raise RuntimeError("MPS requested but is not available")
+        return "mps"
+    if sys.platform == "darwin" and torch.backends.mps.is_available():
+        return "mps"
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 

@@ -1,3 +1,5 @@
+import sys
+
 from typing import Callable, Dict, List, Optional, OrderedDict, Tuple
 
 from PyQt5.QtCore import Qt, QTimer
@@ -30,6 +32,7 @@ KEY_SYMBOLS = {
     Qt.Key.Key_Enter: "↵",
     Qt.Key.Key_Space: "␣",
     Qt.Key.Key_Slash: "/",
+    Qt.Key.Key_Comma: ",",
     Qt.Key.Key_Plus: "+",
     Qt.Key.Key_Minus: "-",
     Qt.Key.Key_F1: "F1",
@@ -86,6 +89,17 @@ KEY_SYMBOLS = {
     Qt.Key.Key_8: "8",
     Qt.Key.Key_9: "9",
 }
+
+
+def format_shortcut(key_combo: str) -> str:
+    """Render Qt modifiers for the platform without changing dispatch keys.
+
+    Qt maps Control to Command and Meta to Control on macOS.
+    """
+    if sys.platform != "darwin":
+        return key_combo
+    symbols = {"Ctrl": "⌘", "Alt": "⌥", "Shift": "⇧", "Meta": "⌃", "⊞": "⌃"}
+    return "+".join(symbols.get(key, key) for key in key_combo.split("+"))
 
 
 class Shortcut:
@@ -196,7 +210,7 @@ class ShortcutsHandler:
         info = []
         for group, shortcuts in self._shortcut_groups.items():
             for shortcut in shortcuts.values():
-                info.append((shortcut.description, group, shortcut.key_combo))
+                info.append((shortcut.description, group, format_shortcut(shortcut.key_combo)))
         return info
 
     @property

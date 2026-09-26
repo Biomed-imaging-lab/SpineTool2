@@ -1,4 +1,4 @@
---extra-index-url https://download.pytorch.org/whl/cu117
+# Shared AI dependencies. Install the CPU/CUDA PyTorch build separately.
 setuptools==80.9.0
 pytorch-lightning==2.2.5
 torchmetrics==1.5.2
@@ -17,6 +17,8 @@ matplotlib==3.10.8
 networkx==3.4.2
 edt==3.1.1
 kimimaro==5.8.1
+# 0.7.x simple_merge fails with NumPy 1.26 on uint32 edges.
+osteoid==0.6.0
 crackle-codec==0.47.0
 oct2py==5.8.0
 pytest==9.1.1

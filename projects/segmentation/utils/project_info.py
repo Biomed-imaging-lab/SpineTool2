@@ -1,3 +1,4 @@
+import ntpath
 import os
 from json import dump, load
 from typing import Dict, List
@@ -18,6 +19,13 @@ from projects.segmentation.utils.constants import (
 from projects.segmentation.utils.constants import ProjectDataDescriptionkKeys as PDDK
 from projects.segmentation.utils.constants import ProjectDescriptionkKeys as PDK
 from projects.segmentation.utils.constants import Types
+
+from utils.project_paths import (
+    is_absolute_path,
+    is_legacy_project_path,
+    normalize_absolute_path,
+    resolve_project_path,
+)
 
 WORKFLOW_MODE_KEY = "workflow_mode"
 NEURAL_WORKFLOW_MODE = "neural_cascade"
@@ -125,42 +133,48 @@ class ProjectInfo:
 
     @staticmethod
     def _is_absolute(path: str) -> bool:
-        drive, _ = os.path.splitdrive(path)
-        return bool(drive) or path.startswith("\\\\")
+        return is_absolute_path(str(path)) and not is_legacy_project_path(str(path))
 
     def resolve_path(self, path: str, must_exist: bool = False) -> str:
-        """Resolve a stored project path, preferring the current project root.
+        """Resolve artifacts beside the current root, retaining absolute fallbacks.
 
-        Relative paths (including the historic ``/layers/...`` form) are first
-        resolved beside project_description.json.  Existing absolute paths and
-        the root persisted by an older project are compatibility fallbacks.
+        Only known historic artifact directories (for example /layers) are
+        treated as project-relative despite their leading slash.
         """
         if not path:
             return ""
-        value = os.path.normpath(str(path))
+        value = str(path)
+        # Older macOS saves removed the slash from an absolute project path.
+        # Recover only paths matching the recorded project root, not arbitrary
+        # relative filenames beginning with Users or home.
+        if self.project_root.startswith("/") and not is_absolute_path(value):
+            prefix = self.project_root.strip("/") + "/"
+            if value.startswith(prefix):
+                value = "/" + value
         candidates = []
         if self._is_absolute(value):
             if self.project_root:
+                windows_path = bool(ntpath.splitdrive(value)[0])
+                flavor = ntpath if windows_path else os.path
                 try:
-                    relative = os.path.relpath(value, self.project_root)
-                    if relative != os.pardir and not relative.startswith(os.pardir + os.sep):
-                        candidates.append(os.path.join(self.folder, relative))
+                    # Do not compare paths belonging to different platforms.
+                    if windows_path == bool(ntpath.splitdrive(self.project_root)[0]):
+                        relative = flavor.relpath(value, self.project_root)
+                        if relative != ".." and not relative.startswith(".." + flavor.sep):
+                            candidates.append(resolve_project_path(self.folder, relative))
                 except ValueError:
                     pass
-            candidates.append(value)
+            candidates.append(normalize_absolute_path(value))
         else:
-            relative = value.lstrip("/\\")
-            candidates.append(os.path.join(self.folder, relative))
+            candidates.append(resolve_project_path(self.folder, value))
             if self.project_root:
-                candidates.append(os.path.join(self.project_root, relative))
+                candidates.append(resolve_project_path(self.project_root, value))
 
         for candidate in candidates:
-            absolute = os.path.abspath(candidate)
-            if not must_exist or os.path.exists(absolute):
-                return absolute
+            if not must_exist or os.path.exists(candidate):
+                return candidate
         raise FileNotFoundError(
-            "Project file was not found: "
-            + str(path)
+            "Project file was not found: " + str(path)
             + ". Open project_description.json from its current location or specify "
             "the path to project_description.json in the project settings."
         )
@@ -204,6 +218,12 @@ class ProjectInfo:
                 name: self.portable_path(path)
                 for name, path in values[LPK.ADDITIONAL_FILES.value].items()
             }
+            values[LPK.METADATA.value] = dict(values[LPK.METADATA.value])
+            for key in ("neural_probability_path", "neural_plugin_response_path"):
+                if values[LPK.METADATA.value].get(key):
+                    values[LPK.METADATA.value][key] = self.portable_path(
+                        values[LPK.METADATA.value][key]
+                    )
             layers_parameters.append(values)
         return {
             PDK.NAME.value: self.name,

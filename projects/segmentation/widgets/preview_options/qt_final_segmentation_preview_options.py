@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 import os
 from json import load
 
@@ -33,13 +34,7 @@ class QtFinalSegmentationPreviewOptions(QtPreviewOptions):
         self._layer = layer
         self._camera = camera
         self._prev_spine_points = []
-        drive, _ = os.path.splitdrive(spines_file)
-        if drive or spines_file.startswith("\\\\"):
-            resolved_spines_file = spines_file
-        else:
-            resolved_spines_file = os.path.join(
-                folder, spines_file.lstrip("/\\")
-            )
+        resolved_spines_file = resolve_project_path(folder, spines_file)
         with open(resolved_spines_file) as f:
             self._spines = load(f)
 

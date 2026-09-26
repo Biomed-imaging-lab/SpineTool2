@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 from datetime import datetime
 from json import dump, load
 from multiprocessing import Lock, Process, Queue
@@ -106,9 +107,9 @@ def _segmentation(
     lock,
 ) -> None:
     try:
-        surface_poly = Polyhedron_3(folder + mesh_file)
+        surface_poly = Polyhedron_3(resolve_project_path(folder, mesh_file))
 
-        with open(folder + additional_files["descriptions"]) as f:
+        with open(resolve_project_path(folder, additional_files["descriptions"])) as f:
             descriptions = load(f)
 
         segmentation = segmentation_by_distance(
@@ -155,7 +156,7 @@ def _segmentation(
 
         lock.acquire()
         for i, spine in enumerate(spine_meshes):
-            spine.write_to_file(folder + files[i])
+            spine.write_to_file(resolve_project_path(folder, files[i]))
 
         additional_file = (
             TMP_AUXILIARY_PATH
@@ -163,7 +164,7 @@ def _segmentation(
             + str(datetime.now()).replace(".", "_").replace(" ", "_").replace(":", "_")
             + ".json"
         )
-        f = open(folder + additional_file, "w")
+        f = open(resolve_project_path(folder, additional_file), "w")
         dump(spines, f)
         f.close()
 
@@ -272,7 +273,7 @@ def _spine_correction(
     lock,
 ) -> None:
     try:
-        with open(folder + additional_files["spines"]) as f:
+        with open(resolve_project_path(folder, additional_files["spines"])) as f:
             spines = load(f)
 
         spine_id = spines["pos_to_id"][str(spine_id)]
@@ -295,8 +296,8 @@ def _spine_correction(
             files[spine["id"]] = spines_files[spine["pos"]]
             adjusted_files[spine["id"]] = adjusted_spines_files[spine["pos"]]
 
-        surface_poly = Polyhedron_3(folder + mesh_file)
-        spine = Polyhedron_3(folder + files[spine_id])
+        surface_poly = Polyhedron_3(resolve_project_path(folder, mesh_file))
+        spine = Polyhedron_3(resolve_project_path(folder, files[spine_id]))
 
         segmentation = set()
         for v in spine.vertices():
@@ -313,7 +314,7 @@ def _spine_correction(
             adjusted_files[spine_id] = ""
             for id, file in adjusted_files.items():
                 if file != "":
-                    spine_meshes.append(Polyhedron_3(folder + file))
+                    spine_meshes.append(Polyhedron_3(resolve_project_path(folder, file)))
                     ids.append(id)
                 elif id == spine_id:
                     spine_meshes.append(new_spine_meshes[0])
@@ -358,7 +359,7 @@ def _spine_correction(
             spines["spines"][str(spine_id)]["correction"] = correction
 
             lock.acquire()
-            new_spine_meshes[0].write_to_file(folder + adjusted_spine_file)
+            new_spine_meshes[0].write_to_file(resolve_project_path(folder, adjusted_spine_file))
             additional_file = (
                 TMP_AUXILIARY_PATH
                 + "/spines_"
@@ -368,7 +369,7 @@ def _spine_correction(
                 .replace(":", "_")
                 + ".json"
             )
-            f = open(folder + additional_file, "w")
+            f = open(resolve_project_path(folder, additional_file), "w")
             dump(spines, f)
             f.close()
 
@@ -412,7 +413,7 @@ def _spine_correction(
             adjusted_files[spine_id] = ""
             for id, file in adjusted_files.items():
                 if file != "":
-                    spine_meshes.append(Polyhedron_3(folder + file))
+                    spine_meshes.append(Polyhedron_3(resolve_project_path(folder, file)))
                     ids.append(id)
             spine_meshes.extend(new_spine_meshes)
             ids.extend(new_spines_ids)
@@ -460,7 +461,7 @@ def _spine_correction(
 
             lock.acquire()
             for i, id in enumerate(new_spines_ids):
-                new_spine_meshes[i].write_to_file(folder + files[id])
+                new_spine_meshes[i].write_to_file(resolve_project_path(folder, files[id]))
             additional_file = (
                 TMP_AUXILIARY_PATH
                 + "/spines_"
@@ -470,7 +471,7 @@ def _spine_correction(
                 .replace(":", "_")
                 + ".json"
             )
-            f = open(folder + additional_file, "w")
+            f = open(resolve_project_path(folder, additional_file), "w")
             dump(spines, f)
             f.close()
 
@@ -496,7 +497,7 @@ def _spine_correction(
             adjusted_files[spine_id] = ""
             for id, file in adjusted_files.items():
                 if file != "":
-                    spine_meshes.append(Polyhedron_3(folder + file))
+                    spine_meshes.append(Polyhedron_3(resolve_project_path(folder, file)))
                     ids.append(id)
             mesh_v_f, spines_indices, _, intersecting_spines = _mesh_list_to_v_f(
                 spine_meshes, ids, shape, scale, min_coord
@@ -535,7 +536,7 @@ def _spine_correction(
                 .replace(":", "_")
                 + ".json"
             )
-            f = open(folder + additional_file, "w")
+            f = open(resolve_project_path(folder, additional_file), "w")
             dump(spines, f)
             f.close()
 
@@ -646,7 +647,7 @@ def fix_segmentation(
     additional_files: dict,
     deleted_spines: list,
 ) -> tuple:
-    with open(folder + additional_files["spines"]) as f:
+    with open(resolve_project_path(folder, additional_files["spines"])) as f:
         spines = load(f)
 
     deleted_spines_id = set()
@@ -680,7 +681,7 @@ def fix_segmentation(
     spine_meshes = []
     ids = []
     for id, file in adjusted_files.items():
-        spine_meshes.append(Polyhedron_3(folder + file))
+        spine_meshes.append(Polyhedron_3(resolve_project_path(folder, file)))
         ids.append(id)
     mesh_v_f, spines_indices, _, _ = _mesh_list_to_v_f(spine_meshes, ids, shape, scale, min_coord)
 
@@ -701,7 +702,7 @@ def fix_segmentation(
         + str(datetime.now()).replace(".", "_").replace(" ", "_").replace(":", "_")
         + ".json"
     )
-    f = open(folder + additional_file, "w")
+    f = open(resolve_project_path(folder, additional_file), "w")
     dump(spines, f)
     f.close()
 

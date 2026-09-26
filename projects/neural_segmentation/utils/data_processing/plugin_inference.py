@@ -1,3 +1,4 @@
+from utils.project_paths import is_absolute_path, is_legacy_project_path, resolve_project_path
 import json
 import os
 import subprocess
@@ -23,14 +24,8 @@ def _resolve_project_path(request: dict, key: str) -> str:
     value = str(request.get(key, "")).strip()
     if not value:
         return ""
-    drive, _ = os.path.splitdrive(value)
-    if bool(drive) or value.startswith("\\\\") or (
-        len(value) >= 3
-        and value[0].isalpha()
-        and value[1] == ":"
-        and value[2] in "\\/"
-    ):
-        return os.path.normpath(value)
+    if is_absolute_path(value) and not is_legacy_project_path(value):
+        return resolve_project_path("", value)
     project_root = str(request.get("project_root", "")).strip()
     if not project_root:
         raise FileNotFoundError(
@@ -38,7 +33,7 @@ def _resolve_project_path(request: dict, key: str) -> str:
             + value
             + "'. Specify the path to project_description.json in the project settings."
         )
-    return os.path.abspath(os.path.join(project_root, value.lstrip("/\\")))
+    return resolve_project_path(project_root, value)
 
 
 def _normalize_probability(volume: np.ndarray) -> np.ndarray:
@@ -286,20 +281,19 @@ def run_ai_spines_inference(
         produced_probability_path = response.get(
             "output_probability_path", output_probability_path
         )
-        produced_drive, _ = os.path.splitdrive(str(produced_probability_path))
-        if not produced_drive and not str(produced_probability_path).startswith("\\\\"):
-            produced_probability_path = os.path.abspath(
-                os.path.join(
-                    str(plugin_request.get("project_root", "")),
-                    str(produced_probability_path).lstrip("/\\"),
-                )
-            )
+        produced_probability_path = _resolve_project_path(
+            {**plugin_request, "output_probability_path": produced_probability_path},
+            "output_probability_path",
+        )
         if not os.path.isfile(produced_probability_path):
             queue_out.put(
                 Result(
                     np.zeros(_fallback_shape(expected_shape), dtype=np.uint8),
                     metadata,
-                    error="Plugin did not produce output probability file",
+                    error=(
+                        "Plugin did not produce output probability file: "
+                        + produced_probability_path
+                    ),
                 )
             )
             return

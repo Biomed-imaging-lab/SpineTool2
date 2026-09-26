@@ -100,7 +100,7 @@ class LayerLoader:
             if filename != new_files.get(
                 desc, ""
             ) and filename != parameters.additional_files.get(desc, ""):
-                _remove_file(self._project_info.folder + filename)
+                _remove_file(self._project_info.resolve_path(filename))
         parameters.tmp_additional_files = new_files.copy()
 
     def replace_mesh_files(
@@ -111,11 +111,11 @@ class LayerLoader:
         parameters = self._project_info.layers_parameters[layer_id]
         if isinstance(data, SurfaceData):
             if parameters.mesh_file != parameters.tmp_mesh_file:
-                _remove_file(self._project_info.folder + parameters.tmp_mesh_file)
+                _remove_file(self._project_info.resolve_path(parameters.tmp_mesh_file))
             parameters.tmp_mesh_file = data.mesh_file
             if parameters.mesh_source_tif_file != parameters.tmp_mesh_source_tif_file:
                 _remove_file(
-                    self._project_info.folder + parameters.tmp_mesh_source_tif_file
+                    self._project_info.resolve_path(parameters.tmp_mesh_source_tif_file)
                 )
             parameters.tmp_mesh_source_tif_file = data.tif_file
         elif isinstance(data, SegmentationData):
@@ -127,7 +127,7 @@ class LayerLoader:
             if "" in tmp_spines_files:
                 tmp_spines_files.remove("")
             for tmp_spine_file in tmp_spines_files:
-                _remove_file(self._project_info.folder + tmp_spine_file)
+                _remove_file(self._project_info.resolve_path(tmp_spine_file))
             parameters.tmp_spines_files = data.spines_files
             tmp_adjusted_spines_files = (
                 set(parameters.tmp_adjusted_spines_files)
@@ -140,14 +140,14 @@ class LayerLoader:
                 tmp_adjusted_spines_files.remove("")
             for tmp_adjusted_spine_file in tmp_adjusted_spines_files:
                 try:
-                    _remove_file(self._project_info.folder + tmp_adjusted_spine_file)
+                    _remove_file(self._project_info.resolve_path(tmp_adjusted_spine_file))
                 except:
                     pass
             parameters.tmp_adjusted_spines_files = data.adjusted_spines_files
         elif isinstance(data, FinalSegmentationData):
             if parameters.tmp_mesh_file != data.mesh_file:
                 if parameters.mesh_file != parameters.tmp_mesh_file:
-                    _remove_file(self._project_info.folder + parameters.tmp_mesh_file)
+                    _remove_file(self._project_info.resolve_path(parameters.tmp_mesh_file))
                 parameters.tmp_mesh_file = data.mesh_file
             tmp_spines_files = (
                 set(parameters.tmp_spines_files)
@@ -155,7 +155,7 @@ class LayerLoader:
                 - set(data.spines_files)
             )
             for tmp_spine_file in tmp_spines_files:
-                _remove_file(self._project_info.folder + tmp_spine_file)
+                _remove_file(self._project_info.resolve_path(tmp_spine_file))
             parameters.tmp_spines_files = data.spines_files
             parameters.tmp_adjusted_spines_files = data.spines_files
 
@@ -408,8 +408,7 @@ class LayerLoader:
             != self._project_info.layers_parameters[layer_id].file
         ):
             _remove_file(
-                self._project_info.folder
-                + self._project_info.layers_parameters[layer_id].tmp_file
+                self._project_info.resolve_path(self._project_info.layers_parameters[layer_id].tmp_file)
             )
         self._project_info.layers_parameters[layer_id].tmp_file = new_file
 
@@ -492,7 +491,7 @@ class LayerLoader:
                 if "" in deleted_files:
                     deleted_files.remove("")
                 for file in deleted_files:
-                    _remove_file(self._project_info.folder + file)
+                    _remove_file(self._project_info.resolve_path(file))
                 del self._project_info.data.layers[deleted]
 
             for layer_parameters in self._project_info.layers_parameters.values():
@@ -512,7 +511,7 @@ class LayerLoader:
                     if "" in deleted_files:
                         deleted_files.remove("")
                     for file in deleted_files:
-                        _remove_file(self._project_info.folder + file)
+                        _remove_file(self._project_info.resolve_path(file))
                     layer_parameters.preview_partially_fixed = (
                         layer_parameters.tmp_preview_partially_fixed
                     )
@@ -524,8 +523,8 @@ class LayerLoader:
                         if file.startswith(TMP_LAYERS_PATH):
                             new_file = file.replace(TMP_LAYERS_PATH, LAYERS_PATH)
                             shutil.copy(
-                                self._project_info.folder + file,
-                                self._project_info.folder + new_file,
+                                self._project_info.resolve_path(file),
+                                self._project_info.resolve_path(new_file),
                             )
                             layer_parameters.tmp_adjusted_spines_files[i] = new_file
                     layer_parameters.adjusted_spines_files = (
@@ -536,8 +535,8 @@ class LayerLoader:
                         if file.startswith(TMP_LAYERS_PATH):
                             new_file = file.replace(TMP_LAYERS_PATH, LAYERS_PATH)
                             shutil.copy(
-                                self._project_info.folder + file,
-                                self._project_info.folder + new_file,
+                                self._project_info.resolve_path(file),
+                                self._project_info.resolve_path(new_file),
                             )
                             layer_parameters.tmp_spines_files[i] = new_file
                     layer_parameters.spines_files = (
@@ -552,17 +551,16 @@ class LayerLoader:
                     if "" in deleted_files:
                         deleted_files.remove("")
                     for file in deleted_files:
-                        _remove_file(self._project_info.folder + file)
+                        _remove_file(self._project_info.resolve_path(file))
                     layer_parameters.preview_partially_fixed = False
                     layer_parameters.tmp_preview_partially_fixed = False
                     for deleted_surface in sorted(
                         layer_parameters.tmp_deleted_spines, reverse=True
                     ):
                         _remove_file(
-                            self._project_info.folder
-                            + layer_parameters.tmp_adjusted_spines_files[
+                            self._project_info.resolve_path(layer_parameters.tmp_adjusted_spines_files[
                                 deleted_surface
-                            ]
+                            ])
                         )
                         del layer_parameters.tmp_adjusted_spines_files[deleted_surface]
                     layer_parameters.deleted_spines = set()
@@ -572,8 +570,8 @@ class LayerLoader:
                         if file.startswith(TMP_LAYERS_PATH):
                             new_file = file.replace(TMP_LAYERS_PATH, LAYERS_PATH)
                             shutil.copy(
-                                self._project_info.folder + file,
-                                self._project_info.folder + new_file,
+                                self._project_info.resolve_path(file),
+                                self._project_info.resolve_path(new_file),
                             )
                             layer_parameters.tmp_adjusted_spines_files[i] = new_file
                     layer_parameters.adjusted_spines_files = (
@@ -588,11 +586,11 @@ class LayerLoader:
                 file = layer_parameters.tmp_file
                 if file.startswith(TMP_LAYERS_PATH):
                     if layer_parameters.file != "":
-                        _remove_file(self._project_info.folder + layer_parameters.file)
+                        _remove_file(self._project_info.resolve_path(layer_parameters.file))
                     new_file = file.replace(TMP_LAYERS_PATH, LAYERS_PATH)
                     shutil.copy(
-                        self._project_info.folder + file,
-                        self._project_info.folder + new_file,
+                        self._project_info.resolve_path(file),
+                        self._project_info.resolve_path(new_file),
                     )
                     layer_parameters.tmp_file = new_file
                 layer_parameters.file = layer_parameters.tmp_file
@@ -600,12 +598,12 @@ class LayerLoader:
                 if file.startswith(TMP_LAYERS_PATH):
                     if layer_parameters.mesh_file != "":
                         _remove_file(
-                            self._project_info.folder + layer_parameters.mesh_file
+                            self._project_info.resolve_path(layer_parameters.mesh_file)
                         )
                     new_file = file.replace(TMP_LAYERS_PATH, LAYERS_PATH)
                     shutil.copy(
-                        self._project_info.folder + file,
-                        self._project_info.folder + new_file,
+                        self._project_info.resolve_path(file),
+                        self._project_info.resolve_path(new_file),
                     )
                     layer_parameters.tmp_mesh_file = new_file
                 layer_parameters.mesh_file = layer_parameters.tmp_mesh_file
@@ -613,13 +611,12 @@ class LayerLoader:
                 if file.startswith(TMP_LAYERS_PATH):
                     if layer_parameters.mesh_source_tif_file != "":
                         _remove_file(
-                            self._project_info.folder
-                            + layer_parameters.mesh_source_tif_file
+                            self._project_info.resolve_path(layer_parameters.mesh_source_tif_file)
                         )
                     new_file = file.replace(TMP_LAYERS_PATH, LAYERS_PATH)
                     shutil.copy(
-                        self._project_info.folder + file,
-                        self._project_info.folder + new_file,
+                        self._project_info.resolve_path(file),
+                        self._project_info.resolve_path(new_file),
                     )
                     layer_parameters.tmp_mesh_source_tif_file = new_file
                 layer_parameters.mesh_source_tif_file = (
@@ -629,11 +626,11 @@ class LayerLoader:
                     old_file = layer_parameters.additional_files.get(desc, "")
                     if file.startswith(TMP_AUXILIARY_PATH):
                         if old_file != "":
-                            _remove_file(self._project_info.folder + old_file)
+                            _remove_file(self._project_info.resolve_path(old_file))
                         new_file = file.replace(TMP_AUXILIARY_PATH, AUXILIARY_PATH)
                         shutil.copy(
-                            self._project_info.folder + file,
-                            self._project_info.folder + new_file,
+                            self._project_info.resolve_path(file),
+                            self._project_info.resolve_path(new_file),
                         )
                         layer_parameters.additional_files[desc] = new_file
                 layer_parameters.tmp_additional_files = (
@@ -702,7 +699,7 @@ class LayerLoader:
                 if "" in deleted_files:
                     deleted_files.remove("")
                 for file in deleted_files:
-                    _remove_file(self._project_info.folder + file)
+                    _remove_file(self._project_info.resolve_path(file))
 
                 if (
                     self._project_info.data.layers[deleted].parent_id
@@ -735,17 +732,17 @@ class LayerLoader:
                 if "" in deleted_files:
                     deleted_files.remove("")
                 for file in deleted_files:
-                    _remove_file(self._project_info.folder + file)
+                    _remove_file(self._project_info.resolve_path(file))
                 layer_parameters.tmp_adjusted_spines_files = (
                     layer_parameters.adjusted_spines_files.copy()
                 )
                 layer_parameters.tmp_spines_files = layer_parameters.spines_files.copy()
                 if layer_parameters.tmp_file != layer_parameters.file:
-                    _remove_file(self._project_info.folder + layer_parameters.tmp_file)
+                    _remove_file(self._project_info.resolve_path(layer_parameters.tmp_file))
                     layer_parameters.tmp_file = layer_parameters.file
                 if layer_parameters.tmp_mesh_file != layer_parameters.mesh_file:
                     _remove_file(
-                        self._project_info.folder + layer_parameters.tmp_mesh_file
+                        self._project_info.resolve_path(layer_parameters.tmp_mesh_file)
                     )
                     layer_parameters.tmp_mesh_file = layer_parameters.mesh_file
                 if (
@@ -753,15 +750,14 @@ class LayerLoader:
                     != layer_parameters.mesh_source_tif_file
                 ):
                     _remove_file(
-                        self._project_info.folder
-                        + layer_parameters.tmp_mesh_source_tif_file
+                        self._project_info.resolve_path(layer_parameters.tmp_mesh_source_tif_file)
                     )
                     layer_parameters.tmp_mesh_source_tif_file = (
                         layer_parameters.mesh_source_tif_file
                     )
                 for desc, file in layer_parameters.tmp_additional_files.items():
                     if file != layer_parameters.additional_files.get(desc, ""):
-                        _remove_file(self._project_info.folder + file)
+                        _remove_file(self._project_info.resolve_path(file))
                 layer_parameters.tmp_additional_files = (
                     layer_parameters.additional_files.copy()
                 )

@@ -1,3 +1,4 @@
+from utils.project_paths import resolve_project_path
 import os
 from datetime import datetime
 from multiprocessing import Pool, Queue
@@ -24,15 +25,15 @@ def _voxelizing(params) -> np.ndarray:
     spine_file, folder, shape, scale, off_file, min_coords = params
     min_z, min_h, min_w = shape
 
-    emesh = easy3d.SurfaceMeshIO.load(folder + spine_file)
+    emesh = easy3d.SurfaceMeshIO.load(resolve_project_path(folder, spine_file))
     copied_emesh = easy3d.SurfaceMesh(emesh)
     filler = easy3d.SurfaceMeshHoleFilling(copied_emesh)
     filler.fill_holes(20000)
 
-    easy3d.SurfaceMeshIO.save(file_name=folder + off_file, mesh=copied_emesh)
+    easy3d.SurfaceMeshIO.save(file_name=resolve_project_path(folder, off_file), mesh=copied_emesh)
 
-    mesh: Trimesh = trimesh.load_mesh(folder + off_file)
-    os.remove(folder + off_file)
+    mesh: Trimesh = trimesh.load_mesh(resolve_project_path(folder, off_file))
+    os.remove(resolve_project_path(folder, off_file))
     for v in mesh.vertices:
         v[0] = min(shape[0] - 1, max((v[0] - min_coords[0]) / scale[0], 0))
         v[1] = min(shape[1] - 1, max((v[1] - min_coords[1]) / scale[1], 0))
@@ -97,7 +98,7 @@ def _voxelize_dendrite(params) -> str:
         + str(datetime.now()).replace(".", "_").replace(" ", "_").replace(":", "_")
         + ".tif"
     )
-    imwrite(folder + tif_file, data=voxel_result)
+    imwrite(resolve_project_path(folder, tif_file), data=voxel_result)
 
     return tif_file
 
@@ -114,7 +115,7 @@ def voxelize(
     queue_out: Queue,
 ) -> None:
     try:
-        binary = imread(folder + binary_filename).astype(np.uint8)
+        binary = imread(resolve_project_path(folder, binary_filename)).astype(np.uint8)
         binary[binary > 0] = 1
 
         pool = Pool(POOL_SIZE)

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Resolve the conda prefix explicitly: the Octave package embeds padded paths.
+OCTAVE_HOME=$(CDPATH= cd -- "$(dirname -- "$0")/../external/octave-env" && pwd) || exit 1
+export OCTAVE_HOME
+OCTAVE_EXEC_HOME=$OCTAVE_HOME
+export OCTAVE_EXEC_HOME
+exec "$OCTAVE_HOME/bin/octave-cli" --no-line-editing "$@"
