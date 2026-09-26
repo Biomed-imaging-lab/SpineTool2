@@ -47,6 +47,40 @@ def _protected_main_paths(graph):
     return protected
 
 
+def _component_diameter(graph, component_nodes):
+    """Return the weighted diameter path and its physical length in nm."""
+    component = graph.subgraph(component_nodes)
+    start = next(iter(component_nodes))
+    endpoint, _ = _farthest_node(component, start)
+    opposite_endpoint, parents = _farthest_node(component, endpoint)
+    path = []
+    node = opposite_endpoint
+    while node is not None:
+        path.append(node)
+        node = parents[node]
+    length_nm = sum(
+        float(component[node_a][node_b]["weight"])
+        for node_a, node_b in zip(path, path[1:])
+    )
+    return path, length_nm
+
+
+def _leaf_branch_length(graph, leaf):
+    """Measure a leaf branch up to its first junction or opposite endpoint."""
+    previous = None
+    current = leaf
+    length_nm = 0.0
+    while True:
+        next_nodes = [node for node in graph.neighbors(current) if node != previous]
+        if not next_nodes:
+            return length_nm
+        next_node = next_nodes[0]
+        length_nm += float(graph[current][next_node]["weight"])
+        previous, current = current, next_node
+        if graph.degree(current) != 2:
+            return length_nm
+
+
 def prune_and_segment_skeleton(
     skel,
     res_zyx,
@@ -54,8 +88,9 @@ def prune_and_segment_skeleton(
     min_length_nm=1000,
     border_margin_voxels=2,
     vertex_offset_nm=None,
+    min_component_length_nm=None,
 ):
-    """Prune short side branches without eroding the dendrite main path."""
+    """Drop degenerate components and prune short side branches in physical units."""
     vertices = np.asarray(skel.vertices)
     if vertex_offset_nm is not None:
         vertices = vertices + np.asarray(vertex_offset_nm, dtype=vertices.dtype)
@@ -74,6 +109,23 @@ def prune_and_segment_skeleton(
     # Break cycles by physical edge length, then protect the main geodesic path.
     if G.number_of_edges() and not nx.is_forest(G):
         G = nx.minimum_spanning_tree(G, weight="weight")
+
+    # Крошечный изолированный фрагмент скелета — это, как правило, шум, а не
+    # ствол дендрита. Удаляем  этот компонент перед расчетом защищаемых основных путей или граничных конечных точек.
+    component_threshold_nm = (
+        float(min_length_nm)
+        if min_component_length_nm is None
+        else float(min_component_length_nm)
+    )
+    degenerate_nodes = set()
+    for component_nodes in list(nx.connected_components(G)):
+        _, diameter_nm = _component_diameter(G, component_nodes)
+        if diameter_nm < component_threshold_nm:
+            degenerate_nodes.update(component_nodes)
+    G.remove_nodes_from(degenerate_nodes)
+    if G.number_of_nodes() == 0:
+        return [], vertices
+
     protected_nodes = _protected_main_paths(G)
 
     # An endpoint at the acquisition boundary may be a truncated dendrite trunk,
@@ -87,7 +139,13 @@ def prune_and_segment_skeleton(
             | (voxel_coords >= upper - border_margin_voxels),
             axis=1,
         )
-        boundary_nodes.update(np.flatnonzero(near_boundary).tolist())
+        boundary_nodes.update(
+            node
+            for node in np.flatnonzero(near_boundary).tolist()
+            if node in G
+            and G.degree(node) == 1
+            and _leaf_branch_length(G, node) >= float(min_length_nm)
+        )
 
     # Repeated pruning is safe now because the component diameter and boundary
     # endpoints are protected. Only short branches attached to that backbone go.
@@ -248,7 +306,7 @@ def scelete(json_path=None, base_path="../../", do_segmentation=True):
             fill_holes=False, # default False
             fix_avocados=False, # default False
             progress=True, # default False, show progress bar
-            parallel=int(item.get("skeleton_parallel", 10)),
+            parallel=int(item.get("skeleton_parallel", 3)),
             parallel_chunk_size=100, # how many skeletons to process before updating progress bar
         )
         print("Kimimaro finished; skeleton objects: " + str(len(skels)), flush=True)

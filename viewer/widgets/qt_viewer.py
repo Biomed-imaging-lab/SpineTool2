@@ -21,6 +21,7 @@ from viewer.vispy.camera import VispyCamera
 from viewer.vispy.canvas import VispyCanvas
 from viewer.vispy.utils.visual import create_vispy_layer, create_vispy_overlay
 from viewer.widgets.qt_dims import QtDims
+from viewer.widgets.qt_scale_bar import QtScaleBar
 from viewer.widgets.qt_viewer_central_widget import QtViewerCentralWidget
 
 if TYPE_CHECKING:
@@ -56,6 +57,8 @@ class QtViewer(QSplitter):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 2, 0, 2)
         main_layout.addWidget(self._central_widget)
+        self.scale_bar = QtScaleBar(self.viewer, main_widget)
+        main_layout.addWidget(self.scale_bar)
         main_layout.addWidget(self.dims)
         main_layout.setSpacing(0)
         main_widget.setLayout(main_layout)
@@ -99,6 +102,7 @@ class QtViewer(QSplitter):
 
     def set_theme(self, theme_id: str) -> None:
         self.canvas._on_theme_change(theme_id)
+        self.scale_bar.set_theme(theme_id)
 
     def _create_canvas(self) -> None:
         self.canvas = VispyCanvas(
@@ -196,7 +200,7 @@ class QtViewer(QSplitter):
                 if isinstance(scaled_size, np.ndarray):
                     pixmap = ellipse_pixmap(scaled_size[0], scaled_size[1])
                 else:
-                    pixmap = ellipse_pixmap(scaled_size)
+                    pixmap = ellipse_pixmap(scaled_size, scaled_size)
                 q_cursor = QCursor(pixmap)
             else:
                 q_cursor = QCursor(square_pixmap(scaled_size))
@@ -226,6 +230,8 @@ class QtViewer(QSplitter):
 
     def on_resize(self, event):
         self.viewer.canvas_size = tuple(self.canvas.size[::-1])
+        if hasattr(self, "scale_bar"):
+            self.scale_bar.update()
 
     def _process_mouse_event(self, event) -> Any:
         if event.pos is None:

@@ -391,8 +391,13 @@ class NeuralSegmentationProject(SegmentationProject):
         return path or ""
 
     def _relative_project_path(self, path: str) -> str:
-        rel = os.path.relpath(path, self._project_info.folder)
-        return "/" + rel.replace("\\", "/")
+        portable_path = getattr(self._project_info, "portable_path", None)
+        if callable(portable_path):
+            return portable_path(path)
+        relative = os.path.relpath(path, self._project_info.folder)
+        if relative == os.pardir or relative.startswith(os.pardir + os.sep):
+            return os.path.abspath(path)
+        return relative.replace("\\", "/")
 
     def _stage_folder_abs(self, stage_id: int) -> str:
         return (
@@ -505,9 +510,18 @@ class NeuralSegmentationProject(SegmentationProject):
         return os.path.join(models_folder, "stage_" + str(stage_id))
 
     def _project_path(self, relative_or_abs: str) -> str:
-        if re.fullmatch(r"[a-zA-Z]:[\\/].*", relative_or_abs):
-            return relative_or_abs
-        return self._project_info.folder + relative_or_abs
+        resolve_path = getattr(self._project_info, "resolve_path", None)
+        if callable(resolve_path):
+            return resolve_path(relative_or_abs)
+        if not relative_or_abs:
+            return ""
+        value = os.path.normpath(str(relative_or_abs))
+        drive, _ = os.path.splitdrive(value)
+        if drive or value.startswith("\\\\"):
+            return os.path.abspath(value)
+        return os.path.abspath(
+            os.path.join(self._project_info.folder, value.lstrip("/\\"))
+        )
 
     def _read_probability(
         self, file: str, expected_shape: Optional[tuple] = None
@@ -1314,11 +1328,13 @@ class NeuralSegmentationProject(SegmentationProject):
             "repo_root": plugin_runtime[0],
             "project_root": self._project_info.folder,
             "ckpt_path": selected_model,
-            "input_image_path": self._project_info.layers_parameters[0].tmp_file,
-            "stage3_mask_path": stage3_mask_path,
-            "area_path": self._project_info.layers_parameters[
+            "input_image_path": self._project_path(
+                self._project_info.layers_parameters[0].tmp_file
+            ),
+            "stage3_mask_path": self._project_path(stage3_mask_path),
+            "area_path": self._project_path(self._project_info.layers_parameters[
                 self._active_layers_list[1]._id
-            ].tmp_file,
+            ].tmp_file),
             "current_scale": list(self._project_info.real_scale),
             "device": self._project_info.device,
             "patch_size": patch_size,

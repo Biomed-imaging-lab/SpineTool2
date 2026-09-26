@@ -14,7 +14,7 @@ from tifffile import imread, imwrite
 
 
 PROGRESS_PREFIX = "SPINETOOL_PROGRESS "
-STAGE4_PREPROCESS_CACHE_VERSION = 1
+STAGE4_PREPROCESS_CACHE_VERSION = 2
 
 
 def _write_json(path: str, payload: dict[str, Any]) -> None:
@@ -62,6 +62,33 @@ def _remove_artifacts(paths: list[str]) -> None:
             os.remove(path)
         except FileNotFoundError:
             pass
+
+
+def _read_binary_artifact(path: str, expected_shape: tuple[int, ...]) -> np.ndarray:
+    array = imread(path)
+    if tuple(array.shape) != expected_shape:
+        raise RuntimeError(
+            "Stage 4 artifact shape mismatch for " + path + ": expected "
+            + str(expected_shape) + ", got " + str(tuple(array.shape))
+        )
+    return array > 0
+
+
+def _validate_distance_artifact(
+    path: str, expected_shape: tuple[int, ...], foreground: np.ndarray
+) -> None:
+    array = imread(path)
+    if tuple(array.shape) != expected_shape:
+        raise RuntimeError("Stage 4 distance artifact has an invalid shape: " + path)
+    if not np.all(np.isfinite(array)):
+        raise RuntimeError("Stage 4 distance artifact contains NaN/Inf: " + path)
+    if np.any(array < 0) or np.any(array > 1):
+        raise RuntimeError("Stage 4 distance artifact is outside [0, 1]: " + path)
+    values = array[foreground]
+    if values.size and np.all(values == values[0]):
+        raise RuntimeError(
+            "Stage 4 distance artifact is constant inside the dendrite mask: " + path
+        )
 
 
 def _emit_progress(
@@ -186,6 +213,8 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
         area = (imread(area_path) > 0).astype(np.uint8)
         if area.shape == mask.shape:
             mask = mask * area
+    if not np.any(mask):
+        raise RuntimeError("The user-approved stage 3 mask is empty")
 
     prepare_dir = _resolve_project_path(
         request, "stage4_prepare_dir", must_exist=False
@@ -278,6 +307,13 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
             + ", "
             + segments_path
         )
+    expected_shape = tuple(mask.shape)
+    skeleton = _read_binary_artifact(skeleton_path, expected_shape)
+    if not np.any(skeleton):
+        raise RuntimeError("Stage 4 skeletonization produced an empty skeleton")
+    segments = imread(segments_path)
+    if tuple(segments.shape) != expected_shape or not np.any(segments):
+        raise RuntimeError("Stage 4 skeletonization produced an empty segment map")
 
     vsot_json_path = os.path.join(prepare_dir, "stage4_vsot_request.json")
     _write_json(
@@ -325,6 +361,13 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
             base_path=preprocess_base_path,
             vsot_root=_required(request, "vsot_root"),
         )
+        # oct2py uses a process-wide session; release before model inference so the external runner can terminate
+        try:
+            from oct2py import octave
+
+            octave.exit()
+        except Exception:
+            pass
         _emit_progress(45, "stage 4: VSOT preprocessing finished")
 
     if not os.path.isfile(shaft_vsot_path) or not os.path.isfile(spine_vsot_path):
@@ -334,6 +377,13 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
             + ", "
             + spine_vsot_path
         )
+    shaft_vsot = _read_binary_artifact(shaft_vsot_path, expected_shape)
+    spine_vsot = _read_binary_artifact(spine_vsot_path, expected_shape)
+    foreground = mask > 0
+    if np.any(shaft_vsot & spine_vsot):
+        raise RuntimeError("VSOT shaft and spine masks overlap")
+    if not np.array_equal(shaft_vsot | spine_vsot, foreground):
+        raise RuntimeError("VSOT masks do not partition the stage 3 foreground")
 
     distance_json_path = os.path.join(prepare_dir, "stage4_distance_request.json")
     distance_item = {
@@ -366,6 +416,8 @@ def _prepare_stage4_inputs(request: dict[str, Any]) -> dict[str, str]:
             + ", "
             + spine_dist_path
         )
+    _validate_distance_artifact(shaft_dist_path, expected_shape, foreground)
+    _validate_distance_artifact(spine_dist_path, expected_shape, foreground)
 
     if not distance_cache_hit:
         _write_json(
@@ -398,6 +450,34 @@ def _model_output_channels(model) -> int:
         return int(model.hparams.out_ch)
     except (AttributeError, TypeError, ValueError):
         return 1
+
+
+def _effective_patch_geometry(
+    requested_patch: list[int],
+    requested_overlap: list[int],
+    device: str,
+) -> tuple[list[int], list[int]]:
+    """Fit stage 4 inference to small GPUs while retaining overlap ratios."""
+    patch = [int(value) for value in requested_patch]
+    overlap = [int(value) for value in requested_overlap]
+    if len(patch) != 3 or len(overlap) != 3 or any(value <= 0 for value in patch):
+        raise ValueError("Stage 4 patch_size and overlap must contain three values")
+
+    if device.startswith("cuda"):
+        total_memory = torch.cuda.get_device_properties(device).total_memory
+        if total_memory <= 8 * 1024**3:
+            safe_patch = [32, 96, 96]
+            ratios = [
+                min(max(overlap_value / patch_value, 0.0), 0.9)
+                for overlap_value, patch_value in zip(overlap, patch)
+            ]
+            patch = [min(value, limit) for value, limit in zip(patch, safe_patch)]
+            overlap = [
+                min(int(round(value * ratio)), value - 1)
+                for value, ratio in zip(patch, ratios)
+            ]
+    overlap = [min(max(value, 0), size - 1) for value, size in zip(overlap, patch)]
+    return patch, overlap
 
 
 def _predict_and_stitch_on_the_fly(
@@ -509,6 +589,11 @@ def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
     prepared = _prepare_stage4_inputs(request)
     _emit_progress(54, "stage 4: resolve device")
     device = _resolve_device(request.get("device", "auto"))
+    patch_size, overlap = _effective_patch_geometry(
+        request.get("patch_size", [64, 128, 128]),
+        request.get("overlap", [48, 96, 96]),
+        device,
+    )
 
     _emit_progress(56, "stage 4: prepare model input")
     datamodule = Stage4DataModule(
@@ -519,8 +604,8 @@ def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
         area_path=prepared["area_path"],
         batch_size=int(request.get("batch_size", 1)),
         num_workers=int(request.get("num_workers", 0)),
-        patch_size=request.get("patch_size", [64, 128, 128]),
-        overlap=request.get("overlap", [48, 96, 96]),
+        patch_size=patch_size,
+        overlap=overlap,
     )
     datamodule.setup("predict")
     expected_shape = tuple(imread(prepared["mask_path"]).shape)
@@ -582,7 +667,8 @@ def _run_stage4(request: dict[str, Any]) -> dict[str, Any]:
         "max": float(np.max(probability)),
         "device": device,
         "mixed_precision": mixed_precision,
-        "overlap": list(datamodule.hparams.overlap),
+        "patch_size": patch_size,
+        "overlap": overlap,
         "prepared": prepared,
     }
 
