@@ -23,6 +23,7 @@ RELEASES = "https://github.com/Biomed-imaging-lab/SpineTool2/releases/download"
 VSOT_URL = "https://github.com/yu-lab-vt/VSOT/archive/refs/heads/main.zip"
 OCTAVE_URL = "https://ftp.gnu.org/gnu/octave/windows/octave-10.3.0-w64.zip"
 MODELS_URL = "https://drive.google.com/file/d/1Sq58lruLRNGSK9YELmpDl3Ar8qTT49lR/view"
+MINIFORGE_VERSION = "26.7.2-0"
 
 
 def target_platform():
@@ -107,8 +108,10 @@ def bootstrap_conda(system, machine):
     prefix = EXTERNAL / "miniforge"
     if prefix.exists():
         raise RuntimeError(f"Incomplete Miniforge installation: {prefix}. Move it aside and retry.")
-    filename = f"Miniforge3-{'Windows' if system == 'Windows' else 'MacOSX'}-{machine}.{'exe' if system == 'Windows' else 'sh'}"
-    url = "https://github.com/conda-forge/miniforge/releases/latest/download/" + filename
+    # Unversioned release aliases have no matching .sha256 asset. Pin both
+    # downloads to one release so cached installers cannot drift from checksums.
+    filename = f"Miniforge3-{MINIFORGE_VERSION}-{'Windows' if system == 'Windows' else 'MacOSX'}-{machine}.{'exe' if system == 'Windows' else 'sh'}"
+    url = f"https://github.com/conda-forge/miniforge/releases/download/{MINIFORGE_VERSION}/" + filename
     installer = download(url, EXTERNAL / "downloads" / filename)
     checksum = download(url + ".sha256", installer.with_suffix(installer.suffix + ".sha256"))
     digest = hashlib.sha256(installer.read_bytes()).hexdigest()
@@ -155,7 +158,10 @@ def install_cgal(conda, prefix, system, machine):
         extract_zip(archive, staging)
         package = Path(staging) / "CGAL"
         if not (package / "CGAL_Kernel.py").is_file():
-            raise RuntimeError("CGAL archive must contain CGAL/CGAL_Kernel.py")
+            # The Windows 0.1 archive is flat; macOS archives include CGAL/.
+            package = Path(staging)
+        if not (package / "CGAL_Kernel.py").is_file():
+            raise RuntimeError("CGAL archive must contain CGAL_Kernel.py at its root or inside CGAL/")
         destination = ROOT / "CGAL"
         backup = ROOT / f"CGAL.backup.{time.time_ns()}"
         if destination.exists():
