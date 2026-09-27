@@ -9,6 +9,7 @@ from viewer.vispy.overlays.base import VispyCanvasOverlay
 
 
 MARGIN = 16
+LABEL_GAP = 6
 
 
 class VispyScaleBarOverlay(VispyCanvasOverlay):
@@ -27,7 +28,7 @@ class VispyScaleBarOverlay(VispyCanvasOverlay):
             color="white",
             font_size=10,
             anchor_x="center",
-            anchor_y="bottom",
+            anchor_y="center",
         )
         super().__init__(
             node=Compound([self._line, self._text]),
@@ -69,7 +70,11 @@ class VispyScaleBarOverlay(VispyCanvasOverlay):
         self.node.transform.translate = [MARGIN, canvas_height - MARGIN, 0, 0]
         self._line.set_data(pos=np.array([[0, 0], [length_px, 0]]))
         self._text.text = format_scale_bar_length(length_um)
-        self._text.pos = (length_px / 2, -15)
+        font_height = self._text.font_size * canvas.dpi / 72.0
+        self._text.pos = (
+            length_px / 2,
+            -(font_height / 2 + LABEL_GAP + self._line.width / 2),
+        )
 
     def close(self):
         self.viewer.camera.zoom_.disconnect(self._on_position_change)
