@@ -12,6 +12,36 @@ import install
 
 
 class InstallerTests(unittest.TestCase):
+    def test_native_import_crash_identifies_check_and_preserves_output(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(install, "EXTERNAL", Path(temp)), contextlib.redirect_stdout(io.StringIO()):
+            results = [install.subprocess.CompletedProcess([], 0, "numpy OK\n"), install.subprocess.CompletedProcess([], 3221225477, "Windows fatal exception: access violation\n")]
+            with patch.object(install.subprocess, "run", side_effect=results) as run:
+                with self.assertRaisesRegex(RuntimeError, "PyTorch.*0xC0000005"):
+                    install.check_imports("conda", Path(temp))
+            log = (Path(temp) / "install-check.log").read_text()
+            self.assertIn("PASSED: NumPy", log)
+            self.assertIn("Windows fatal exception: access violation", log)
+            self.assertIn("FAILED: PyTorch", log)
+            command = run.call_args.args[0]
+            self.assertIn("faulthandler", command)
+            self.assertIn("-u", command)
+
+    def test_gui_and_ai_runtime_checked_in_separate_processes(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(install, "EXTERNAL", Path(temp)), contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(install.subprocess, "run", return_value=install.subprocess.CompletedProcess([], 0, "OK\n")) as run:
+                install.check_imports("conda", Path(temp))
+            self.assertEqual(run.call_count, len(install.IMPORT_CHECKS) + 1)
+            commands = [call.args[0][-1] for call in run.call_args_list]
+            gui = next(code for code in commands if "from application.application" in code)
+            self.assertNotIn("import torch", gui)
+            ai = commands[-1]
+            self.assertIn("src.models.stage4_module", ai)
+            self.assertIn("data_preprocessing.stage4_vsot", ai)
+            self.assertNotIn("application.application", ai)
+            self.assertNotIn("meshlib", ai)
+            self.assertNotIn("easy3d", ai)
+            self.assertIn("PASSED: AI runtime imports", (Path(temp) / "install-check.log").read_text())
+
     def test_miniforge_downloads_versioned_installer_and_checksum(self):
         for system, machine in [("Windows", "x86_64"), ("Darwin", "x86_64"), ("Darwin", "arm64")]:
             with self.subTest(system=system, machine=machine), tempfile.TemporaryDirectory() as temp, patch.object(install, "EXTERNAL", Path(temp)), patch.object(install, "find_conda", return_value=None):
