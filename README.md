@@ -2,6 +2,70 @@
 
 **Windows** is the primary platform. Instructions for macOS Intel and Apple Silicon are provided in a separate section below.
 
+## Automatic installation (Windows and macOS)
+
+From the project folder, run with an existing **64-bit Python 3.9 or newer**:
+
+```bash
+python install.py
+python start.py
+```
+
+On macOS, use `python3` if `python` is unavailable. The bootstrap Python does not
+need to be 3.10: the installer creates a separate Python 3.10 environment in
+`external/python-env`. If conda is missing, it downloads and installs Miniforge
+locally in `external/miniforge`, without changing the system PATH or registering
+a system Python. Anaconda and Git do not need to be installed manually.
+
+The installer installs the application and AI dependencies, selects Easy3D and
+CGAL for the current Python architecture, downloads VSOT and Octave 10.3, prepares
+Octave's `image` package, checks imports and the Python/Octave connection, and fills
+empty Neural Segmentation settings. Octave is still used by the algorithm, but
+its download and setup are automatic. macOS may require one manual prerequisite,
+`xcode-select --install`, to compile the image package; the installer reports this
+if needed. Downloads and installed runtimes require several GB of disk space.
+
+Model weights are separate because the Google Drive download may require login.
+Download the [weights archive](https://drive.google.com/file/d/1Sq58lruLRNGSK9YELmpDl3Ar8qTT49lR/view?usp=drive_link)
+and pass it on the first run or a later run:
+
+```bash
+python install.py --models "/path/to/models.zip"
+```
+
+The ZIP must contain `stage_1/` through `stage_4/`, either at its root or under
+`models/`. Existing identical files are reused; differing model files are never
+overwritten. Without weights, the application is installed but AI inference is
+not ready; missing stages are listed at the end.
+
+Optional commands:
+
+```bash
+python install.py --dry-run                  # Plan only; no changes/downloads
+python install.py --torch-backend cuda       # Windows NVIDIA/CUDA 12.4 wheels
+python install.py --skip-vsot                # No Octave/VSOT; full stage 4 unavailable
+python install.py --octave "/path/to/octave-cli"  # Reuse an existing installation
+python install.py --check                    # Check dependencies/imports only
+python install.py --check --octave "/path/to/octave-cli"  # Also check Oct2Py
+```
+
+Windows defaults to CPU PyTorch; CUDA requires a compatible NVIDIA driver.
+macOS automatically gets the Intel CPU or ARM CPU/MPS package. GPU availability
+is printed by the check. `--prefix /path/to/conda/environment` selects an existing
+Python 3.10 environment or the location of a new one; use the same option when
+checking or rerunning that installation. Existing nonempty application settings
+are preserved. An incompatible CGAL folder is backed up before replacement and
+restored if the new binary fails its import check.
+
+`start.py` uses the environment recorded by the last successful installation.
+Keep the project at its installed location; conda environments are not portable.
+After moving the source code, create a fresh environment and rerun the installer.
+
+Installer safety/retry tests and read-only checks against an existing macOS Intel
+environment have passed. A fresh end-to-end installation, Windows execution and
+native Apple Silicon execution still require validation. Manual setup remains
+documented below for troubleshooting.
+
 ## Windows — primary platform
 
 ### Install
