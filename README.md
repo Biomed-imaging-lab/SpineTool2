@@ -47,6 +47,15 @@ After a successful installation, always start the application from the repositor
 python start.py
 ```
 
+## Example data
+
+The [`example_data`](example_data) directory contains files for trying the main workflows and creating your first projects:
+
+- [`example_zstack.tif`](example_data/example_zstack.tif) — a TIFF image for semi-automatic segmentation or AI segmentation;
+- [`example_mesh.off`](example_data/example_mesh.off) — a surface mesh for semi-automatic mesh segmentation.
+
+Start SpineTool2, select **File → Create new project**, choose **segmentation** for a semi-automatic project or **neural_segmentation** for an AI project, and select the corresponding example file as the original image. Save the project to a separate folder so the example files remain unchanged and can be reused.
+
 ## Manual installation
 
 ### Windows x64
