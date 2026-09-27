@@ -23,6 +23,7 @@ RELEASES = "https://github.com/Biomed-imaging-lab/SpineTool2/releases/download"
 VSOT_URL = "https://github.com/yu-lab-vt/VSOT/archive/refs/heads/main.zip"
 OCTAVE_URL = "https://ftp.gnu.org/gnu/octave/windows/octave-10.3.0-w64.zip"
 MODELS_URL = "https://drive.google.com/file/d/1Sq58lruLRNGSK9YELmpDl3Ar8qTT49lR/view"
+MINIFORGE_VERSION = "26.7.2-0"
 
 
 def target_platform():
@@ -107,8 +108,10 @@ def bootstrap_conda(system, machine):
     prefix = EXTERNAL / "miniforge"
     if prefix.exists():
         raise RuntimeError(f"Incomplete Miniforge installation: {prefix}. Move it aside and retry.")
-    filename = f"Miniforge3-{'Windows' if system == 'Windows' else 'MacOSX'}-{machine}.{'exe' if system == 'Windows' else 'sh'}"
-    url = "https://github.com/conda-forge/miniforge/releases/latest/download/" + filename
+    # Unversioned release aliases have no matching .sha256 asset. Pin both
+    # downloads to one release so cached installers cannot drift from checksums.
+    filename = f"Miniforge3-{MINIFORGE_VERSION}-{'Windows' if system == 'Windows' else 'MacOSX'}-{machine}.{'exe' if system == 'Windows' else 'sh'}"
+    url = f"https://github.com/conda-forge/miniforge/releases/download/{MINIFORGE_VERSION}/" + filename
     installer = download(url, EXTERNAL / "downloads" / filename)
     checksum = download(url + ".sha256", installer.with_suffix(installer.suffix + ".sha256"))
     digest = hashlib.sha256(installer.read_bytes()).hexdigest()
@@ -155,7 +158,10 @@ def install_cgal(conda, prefix, system, machine):
         extract_zip(archive, staging)
         package = Path(staging) / "CGAL"
         if not (package / "CGAL_Kernel.py").is_file():
-            raise RuntimeError("CGAL archive must contain CGAL/CGAL_Kernel.py")
+            # The Windows 0.1 archive is flat; macOS archives include CGAL/.
+            package = Path(staging)
+        if not (package / "CGAL_Kernel.py").is_file():
+            raise RuntimeError("CGAL archive must contain CGAL_Kernel.py at its root or inside CGAL/")
         destination = ROOT / "CGAL"
         backup = ROOT / f"CGAL.backup.{time.time_ns()}"
         if destination.exists():
@@ -245,9 +251,78 @@ def install_models(archive):
             shutil.copy2(original, target)
 
 
+IMPORT_CHECKS = [
+    ("NumPy", "import numpy; print(numpy.__version__)"),
+    ("PyTorch", "import torch; print(torch.__version__)"),
+    ("Easy3D", "import easy3d"),
+    ("PyMaxflow", "import maxflow"),
+    ("Application", "from application.application import Application"),
+    ("CGAL", "from CGAL.CGAL_Kernel import Point_3; print(Point_3(0,0,0))"),
+    ("GPU availability", "import torch; print('CUDA:', torch.cuda.is_available(), 'MPS:', torch.backends.mps.is_available())"),
+]
+
+
+def ai_runtime_check():
+    # The GUI imports meshlib/Easy3D; inference runs in a separate subprocess.
+    # Loading both stacks together is not a supported application launch path
+    # and can crash meshlib initialization on Windows (0xC0000005).
+    modules = [
+        "plugins.ai_segmentation.run_inference",
+        "projects.neural_segmentation.plugins.ai_spines_stage4_inference_cli",
+        "src.datamodules.dendrite_datamodule", "src.models.segmentation_module",
+        "src.datamodules.stage2_datamodule", "src.models.segmentation_module_stage2",
+        "src.datamodules.stage3_datamodule", "src.models.stage3_module",
+        "src.datamodules.stage4_datamodule", "src.models.stage4_module",
+        "data_preprocessing.stage4_sceleton", "data_preprocessing.stage4_distance",
+        "data_preprocessing.stage4_vsot", "maxflow",
+    ]
+    repo = ROOT / "plugins/ai_segmentation"
+    setup = f"import sys, importlib; sys.path.insert(0, {str(repo)!r}); sys.path.insert(0, {str(repo / 'data_preprocessing')!r})"
+    imports = "; ".join(
+        f"print('IMPORT: {name}', flush=True); importlib.import_module({name!r}); print('OK: {name}', flush=True)"
+        for name in modules
+    )
+    return setup + "; " + imports
+
+
+def check_imports(conda, prefix):
+    """Keep crash diagnostics even when a native extension cannot raise Python errors."""
+    EXTERNAL.mkdir(parents=True, exist_ok=True)
+    log_path = EXTERNAL / "install-check.log"
+    with log_path.open("w", encoding="utf-8") as log:
+        log.write(f"Platform: {platform.system()} {platform.release()} {platform.machine()}\nEnvironment: {prefix}\n")
+        checks = list(IMPORT_CHECKS)
+        # Application above checks the actual GUI import tree in its own process.
+        # Check the AI import tree together, in another process, just as at runtime.
+        checks.append(("AI runtime imports", ai_runtime_check()))
+        for name, code in checks:
+            heading = f"CHECK: {name}"
+            print(heading, flush=True)
+            log.write(heading + "\n")
+            log.flush()
+            command = python_command(conda, prefix, "-u", "-X", "faulthandler", "-c", code)
+            result = subprocess.run(
+                [str(arg) for arg in command], cwd=ROOT,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                encoding="utf-8", errors="replace",
+            )
+            output = result.stdout or ""
+            print(output, end="", flush=True)
+            log.write(output + "\n")
+            if result.returncode:
+                status = f"exit {result.returncode} (0x{result.returncode & 0xffffffff:08X})"
+                log.write(f"FAILED: {name}: {status}\n")
+                raise RuntimeError(
+                    f"Import check failed: {name}: {status}. Diagnostics: {log_path}. "
+                    "Send this log to diagnose the failure; reinstalling everything is not required."
+                )
+            log.write(f"PASSED: {name}\n")
+    print(f"Import checks passed. Diagnostics: {log_path}", flush=True)
+
+
 def verify(conda, prefix, octave=None):
     run(python_command(conda, prefix, "-m", "pip", "check"))
-    run(python_command(conda, prefix, "-c", "import numpy, torch, easy3d, maxflow; from application.application import Application; from CGAL.CGAL_Kernel import Point_3; print('Application imports OK', numpy.__version__, torch.__version__, Point_3(0,0,0)); print('CUDA:', torch.cuda.is_available(), 'MPS:', torch.backends.mps.is_available())"))
+    check_imports(conda, prefix)
     if octave:
         code = "import os, sys; os.environ['OCTAVE_EXECUTABLE']=sys.argv[1]; os.environ['PATH']=os.path.dirname(sys.argv[1])+os.pathsep+os.environ.get('PATH',''); from oct2py import Oct2Py; oc=Oct2Py(timeout=60); oc.eval('pkg load image'); assert oc.eval('1+1') == 2; oc.exit(); print('Python/Octave connection OK')"
         run(python_command(conda, prefix, "-c", code, str(octave)))
