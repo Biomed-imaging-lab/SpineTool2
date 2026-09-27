@@ -5,11 +5,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from PyQt5.QtCore import QDir, QSize, Qt
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QFileDialog
 
 from application.settings import ApplicationSettings
 from application.utils import constants
+from application.utils.app_icon import application_icon
+from application.utils.macos_app import set_macos_app_name
 from application.utils.history import get_open_history, update_open_history
 from application.utils.qt_event_filters import QtToolTipEventFilter
 from application.utils.utils import maybe_allow_interrupt
@@ -83,13 +84,19 @@ class Application(ShortcutsHandler):
             QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
 
             argv = sys.argv.copy()
+            if sys.platform == "darwin":
+                set_macos_app_name(set_values["app_name"])
+                QApplication.setApplicationName(set_values["app_name"])
+                QApplication.setApplicationDisplayName(set_values["app_name"])
             self._app = QApplication(argv)
+            if sys.platform == "darwin":
+                self._app.setStyle("Fusion")
             self._app.setApplicationName(set_values.get("app_name"))
             self._app.setApplicationVersion(set_values.get("app_version"))
             self._app.setOrganizationName(set_values.get("org_name"))
             self._app.setOrganizationDomain(set_values.get("org_domain"))
             set_app_id(set_values.get("app_id"))
-            self._app.setWindowIcon(QIcon(set_values.get("icon")))
+            self._app.setWindowIcon(application_icon(set_values.get("icon")))
 
             self._window: Window = Window(title)
             self._active_project: Optional[ProjectBase] = None

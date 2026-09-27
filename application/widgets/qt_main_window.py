@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Tuple, Union
 from weakref import WeakValueDictionary
 
 from PyQt5.QtCore import QEvent, QObject, QPoint, QRect, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QIcon, QKeyEvent
+from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWidgets import QApplication, QDialog, QDockWidget, QMainWindow, QWidget
 
 from application.settings import ApplicationSettings
@@ -26,14 +26,12 @@ if TYPE_CHECKING:
 
 
 class QtMainWindow(QMainWindow):
-    ICON_PATH = ApplicationSettings.RESOURCES_PATH + "/logo.png"
-
     exit = pyqtSignal()
 
     def __init__(self, title: str, parent=None):
         super().__init__(parent)
 
-        self.setWindowIcon(QIcon(QtMainWindow.ICON_PATH))
+        self.setWindowIcon(QApplication.windowIcon())
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self._central = QtCentralWidget(self)
         self._central.layout().setContentsMargins(4, 0, 4, 0)
