@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 import stat
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -12,6 +13,28 @@ import install
 
 
 class InstallerTests(unittest.TestCase):
+    def test_backend_pin_rejects_previous_opposite_build(self):
+        from packaging.requirements import Requirement
+        for backend, wanted, unwanted in [("cuda", "2.4.1+cu124", "2.4.1+cpu"), ("cpu", "2.4.1+cpu", "2.4.1+cu124")]:
+            spec = Requirement(install.torch_packages("Windows", "x86_64", backend)[0]).specifier
+            self.assertIn(wanted, spec)
+            self.assertNotIn(unwanted, spec)
+
+    def test_cuda_validation_rejects_cpu_and_unavailable_gpu(self):
+        for version, available, message in [("2.4.1+cpu", False, "Wrong PyTorch build"), ("2.4.1+cu124", False, "GPU unavailable")]:
+            fake = SimpleNamespace(__version__=version, version=SimpleNamespace(cuda=None if version.endswith('cpu') else '12.4'), cuda=SimpleNamespace(is_available=lambda: available))
+            with self.subTest(version=version), patch.dict(install.sys.modules, {"torch": fake}), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(AssertionError, message):
+                    exec(install.torch_backend_check("cuda"), {})
+
+    def test_cuda_check_is_included_when_requested(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(install, "EXTERNAL", Path(temp)), contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(install.subprocess, "run", return_value=install.subprocess.CompletedProcess([], 0, "OK\n")) as run:
+                install.check_imports("conda", Path(temp), "cuda")
+            commands = [call.args[0][-1] for call in run.call_args_list]
+            self.assertIn(install.torch_backend_check("cuda"), commands)
+            self.assertIn("PASSED: Requested PyTorch backend", (Path(temp) / "install-check.log").read_text())
+
     def test_native_import_crash_identifies_check_and_preserves_output(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(install, "EXTERNAL", Path(temp)), contextlib.redirect_stdout(io.StringIO()):
             results = [install.subprocess.CompletedProcess([], 0, "numpy OK\n"), install.subprocess.CompletedProcess([], 3221225477, "Windows fatal exception: access violation\n")]

@@ -144,7 +144,10 @@ def torch_packages(system, machine, backend):
         if backend == "cuda":
             raise RuntimeError("CUDA is available only in the Windows installer. macOS uses CPU/MPS.")
         return ["torch==2.2.2" if machine == "x86_64" else "torch==2.11.0"]
-    return ["torch==2.4.1", "--index-url", "https://download.pytorch.org/whl/" + ("cu124" if backend == "cuda" else "cpu")]
+    # A public-version pin also accepts 2.4.1+cpu from a previous installation.
+    # Include the local version so switching backends actually replaces torch.
+    variant = "cu124" if backend == "cuda" else "cpu"
+    return [f"torch==2.4.1+{variant}", "--index-url", "https://download.pytorch.org/whl/" + variant]
 
 
 def install_cgal(conda, prefix, system, machine):
@@ -285,13 +288,34 @@ def ai_runtime_check():
     return setup + "; " + imports
 
 
-def check_imports(conda, prefix):
+def torch_backend_check(backend):
+    variant = "cu124" if backend == "cuda" else "cpu"
+    code = (
+        "import torch; print('PyTorch:', torch.__version__, 'CUDA build:', torch.version.cuda, flush=True); "
+        f"assert torch.__version__ == '2.4.1+{variant}', 'Wrong PyTorch build for requested {backend} backend'; "
+    )
+    if backend == "cuda":
+        code += (
+            "assert torch.cuda.is_available(), 'CUDA build installed, but GPU unavailable. Check NVIDIA GPU and driver with nvidia-smi'; "
+            "print('GPU:', torch.cuda.get_device_name(0), flush=True); "
+            "layer = torch.nn.Conv3d(1, 2, 3).to('cuda'); "
+            "result = layer(torch.ones(1, 1, 8, 8, 8, device='cuda')); "
+            "torch.cuda.synchronize(); "
+            "assert torch.isfinite(result).all().item(), 'Non-finite CUDA result'; "
+            "print('CUDA Conv3d check OK', flush=True)"
+        )
+    return code
+
+
+def check_imports(conda, prefix, expected_backend=None):
     """Keep crash diagnostics even when a native extension cannot raise Python errors."""
     EXTERNAL.mkdir(parents=True, exist_ok=True)
     log_path = EXTERNAL / "install-check.log"
     with log_path.open("w", encoding="utf-8") as log:
         log.write(f"Platform: {platform.system()} {platform.release()} {platform.machine()}\nEnvironment: {prefix}\n")
         checks = list(IMPORT_CHECKS)
+        if expected_backend:
+            checks.append(("Requested PyTorch backend", torch_backend_check(expected_backend)))
         # Application above checks the actual GUI import tree in its own process.
         # Check the AI import tree together, in another process, just as at runtime.
         checks.append(("AI runtime imports", ai_runtime_check()))
@@ -320,9 +344,9 @@ def check_imports(conda, prefix):
     print(f"Import checks passed. Diagnostics: {log_path}", flush=True)
 
 
-def verify(conda, prefix, octave=None):
+def verify(conda, prefix, octave=None, expected_backend=None):
     run(python_command(conda, prefix, "-m", "pip", "check"))
-    check_imports(conda, prefix)
+    check_imports(conda, prefix, expected_backend)
     if octave:
         code = "import os, sys; os.environ['OCTAVE_EXECUTABLE']=sys.argv[1]; os.environ['PATH']=os.path.dirname(sys.argv[1])+os.pathsep+os.environ.get('PATH',''); from oct2py import Oct2Py; oc=Oct2Py(timeout=60); oc.eval('pkg load image'); assert oc.eval('1+1') == 2; oc.exit(); print('Python/Octave connection OK')"
         run(python_command(conda, prefix, "-c", code, str(octave)))
@@ -359,7 +383,7 @@ def main(argv=None):
         conda = find_conda(system)
         if not conda:
             raise RuntimeError("Conda not found; run install.py first.")
-        verify(conda, prefix, args.octave)
+        verify(conda, prefix, args.octave, "cuda" if args.torch_backend == "cuda" else None)
         return 0
     if args.models and not args.models.is_file():
         raise RuntimeError("Models archive not found: " + str(args.models))
@@ -385,7 +409,7 @@ def main(argv=None):
         octave = install_octave(conda, prefix, system, machine, args.octave)
     if args.models:
         install_models(args.models)
-    verify(conda, prefix, octave)
+    verify(conda, prefix, octave, args.torch_backend if system == "Windows" else None)
     configure(conda, prefix, vsot, octave)
     manifest = EXTERNAL / "installation.json"
     manifest.write_text(json.dumps({"conda": str(conda), "prefix": str(prefix), "octave": str(octave) if octave else None}, indent=2), encoding="utf-8")
