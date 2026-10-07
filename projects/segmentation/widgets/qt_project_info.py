@@ -83,9 +83,7 @@ class QtProjectInfo(QScrollArea):
     def rename(self) -> None:
         self._new_name = self._project_name_line.text()
         self._project_info.name = self._new_name
-        old_folder: str = self._project_info.folder
-        new_folder = "/".join(old_folder.split("/")[:-1]) + "/" + self._new_name
-        self._folder_line.setText(new_folder)
+        self._folder_line.setText(self._project_info.folder)
         self.renamed_.emit(self._new_name)
 
     def change_scale(self) -> None:

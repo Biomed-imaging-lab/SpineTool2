@@ -3453,17 +3453,7 @@ class SegmentationProject(ProjectBase):
                         )
                         non_editable.append(info)
                 self._project_info.non_editable_layers = non_editable
-            old_folder: str = self._project_info.folder
-            new_folder = (
-                "/".join(old_folder.split("/")[:-1]) + "/" + self._project_info.name
-            )
-            filename = new_folder + "/" + ProjectInfo.DESCRIPTION_FILENAME
-            self._project_info.folder = new_folder
-            if os.path.normcase(os.path.abspath(old_folder)) != os.path.normcase(
-                os.path.abspath(new_folder)
-            ):
-                os.replace(old_folder, new_folder)
-            update_open_history(filename)
+            update_open_history(self._project_info.filename)
         self._project_info.save()
         self._saving = False
         QApplication.instance().removeEventFilter(self._input_filter)

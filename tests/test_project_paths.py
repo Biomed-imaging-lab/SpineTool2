@@ -1,5 +1,6 @@
 import ntpath
 import os
+import posixpath
 from pathlib import Path
 import tempfile
 import unittest
@@ -14,7 +15,12 @@ class ProjectPathTests(unittest.TestCase):
                       'C:\\images\\input.tif', '\\\\server\\share\\input.tif'):
             with self.subTest(value=value):
                 self.assertTrue(is_absolute_path(value))
-                expected = ntpath.normpath(value) if ntpath.splitdrive(value)[0] else os.path.normpath(value)
+                if ntpath.splitdrive(value)[0]:
+                    expected = ntpath.normpath(value)
+                elif value.startswith("/") and os.name == "nt":
+                    expected = posixpath.normpath(value)
+                else:
+                    expected = os.path.normpath(value)
                 self.assertEqual(resolve_project_path('/project', value), expected)
 
     def test_legacy_artifacts_and_windows_relative_separators(self):
@@ -72,6 +78,19 @@ class ProjectPathTests(unittest.TestCase):
             loaded = ProjectInfo.load(info.filename)
             self.assertEqual(loaded.resolve_path(relative, must_exist=True), str(artifact))
             self.assertEqual(loaded.resolve_path(str(artifact), must_exist=True), str(artifact))
+
+    def test_project_name_change_does_not_change_description_location(self):
+        with tempfile.TemporaryDirectory() as folder:
+            project_folder = Path(folder) / "user-chosen-location"
+            project_folder.mkdir()
+            info = ProjectInfo(folder=str(project_folder))
+            description_path = project_folder / ProjectInfo.DESCRIPTION_FILENAME
+
+            info.name = "renamed_project"
+            info.save()
+
+            self.assertEqual(Path(info.filename), description_path)
+            self.assertTrue(description_path.is_file())
 
 
 if __name__ == '__main__':
