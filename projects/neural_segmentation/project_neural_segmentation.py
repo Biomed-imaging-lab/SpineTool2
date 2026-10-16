@@ -2,6 +2,7 @@ from utils.project_paths import resolve_project_path
 import json
 import os
 import re
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -65,7 +66,7 @@ from projects.segmentation.utils.data_processing.final_segmentation import (
 from projects.segmentation.utils.data_processing.voxel_cleanup import (
     fill_small_enclosed_holes,
 )
-from utils.notifications import show_error, show_warning
+from utils.notifications import Notification, NotificationManager, show_error, show_info, show_warning
 from utils.progress import progress
 from utils.qt_translater import Translater
 
@@ -213,6 +214,10 @@ class NeuralSegmentationProject(SegmentationProject):
         super().__init__(window, project_info, settings or SegmentationSettings.instance())
         self._ensure_neural_storage(self._project_info.folder)
         self._ensure_models_storage()
+        self._qt_next_stage_list.cleanup_button.setText("clear Stage 4 preprocessing")
+        self._qt_next_stage_list.cleanup_button.clicked.connect(
+            self._request_stage4_preprocess_cleanup
+        )
         self._project_info_widget.toggle_gpu_checkbox(True)
         self._stage4_run_options = QtStage4RunOptions(
             self._neural_settings.state,
@@ -224,6 +229,28 @@ class NeuralSegmentationProject(SegmentationProject):
         else:
             self._qt_next_stage_list.set_run_options_widget(self._stage4_run_options)
             self._qt_next_stage_list.show_run_options(self._current_stage_id() == 3)
+
+    def _request_stage4_preprocess_cleanup(self) -> None:
+        preprocess_dir = self._stage_folder_abs(4) + "/preprocess"
+        if not os.path.isdir(preprocess_dir):
+            show_warning("Stage 4 preprocessing directory was not found")
+            return
+
+        def delete_preprocessing(_dialog) -> None:
+            try:
+                shutil.rmtree(preprocess_dir)
+            except Exception as exc:
+                show_error("Failed to delete Stage 4 preprocessing: " + str(exc))
+                return
+            self._qt_next_stage_list.cleanup_button.hide()
+            show_info("Stage 4 preprocessing was deleted")
+
+        NotificationManager.instance().dispatch(
+            Notification(
+                "Delete Stage 4 preprocessing? It will be recalculated on the next Stage 4 run.",
+                actions=(("delete preprocessing", delete_preprocessing),),
+            )
+        )
 
     @property
     def additional_settings(self) -> dict:
@@ -267,6 +294,8 @@ class NeuralSegmentationProject(SegmentationProject):
         except Exception:
             pass
 
+        self._qt_next_stage_list.cleanup_button.hide()
+
         stage4_options_visible = (
             stage == Types.VOXEL_MESH_SEGMENTATION
             and self._current_stage_id() == 3
@@ -304,6 +333,10 @@ class NeuralSegmentationProject(SegmentationProject):
                 self._create_new_voxel_segmentation
             )
         elif stage == Types.VOXEL_MESH_SEGMENTATION:
+            preprocess_dir = self._stage_folder_abs(4) + "/preprocess"
+            self._qt_next_stage_list.cleanup_button.setVisible(
+                os.path.isdir(preprocess_dir)
+            )
             if self._current_stage_id() >= 4:
                 self._qt_next_stage_list.create_new_button.setText(
                     "create final segmentation"
