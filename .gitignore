@@ -171,3 +171,6 @@ docs/*
 # Local desktop and IDE metadata
 .DS_Store
 .idea/
+
+# Backups made when installing a different CGAL architecture
+/CGAL.backup.*/

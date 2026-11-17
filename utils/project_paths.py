@@ -1,6 +1,7 @@
 """Resolve native, Windows and historic project-relative artifact paths."""
 import ntpath
 import os
+import posixpath
 
 # Older project files stored these project-relative directories with a slash.
 _LEGACY_ROOTS = (
@@ -26,6 +27,8 @@ def is_legacy_project_path(path: str) -> bool:
 def normalize_absolute_path(path: str) -> str:
     if ntpath.splitdrive(path)[0] and os.name != "nt":
         return ntpath.normpath(path)
+    if path.startswith("/") and os.name == "nt":
+        return posixpath.normpath(path)
     return os.path.normpath(path)
 
 

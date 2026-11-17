@@ -189,7 +189,7 @@ class ProjectInfo:
             # Do not destroy the only recorded fallback when an artifact is
             # temporarily unavailable (for example, an unplugged data drive).
             if self._is_absolute(str(path)):
-                return os.path.normpath(str(path))
+                return normalize_absolute_path(str(path))
             absolute = self.resolve_path(path)
         try:
             relative = os.path.relpath(absolute, self.folder)
