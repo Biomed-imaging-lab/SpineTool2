@@ -73,9 +73,9 @@ class QtBinarizationPreviewOptions(QtPreviewOptions):
             self._block_parameters()
 
     def set_params(self, params: dict = {}) -> None:
-        self.base_threshold_slider.setValue(params.get("base_threshold", 127))
-        self.weight_slider.setValue(params.get("weight", 5))
-        self.block_size_slider.setValue(params.get("block_size", 3))
+        self.base_threshold_slider.setValue(int(params.get("base_threshold", 127)))
+        self.weight_slider.setValue(int(params.get("weight", 5)))
+        self.block_size_slider.setValue(int(params.get("block_size", 3)))
         self.apply_user_threshold_check_box.setChecked(
             params.get("apply_user_threshold", False)
         )

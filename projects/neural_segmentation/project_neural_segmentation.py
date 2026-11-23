@@ -177,14 +177,11 @@ class NeuralSegmentationProject(SegmentationProject):
     @classmethod
     def open(cls, window: "Window", path: str) -> Optional[ProjectBase]:
         try:
-            if re.fullmatch(r"[a-zA-Z0-9_\-:\\/\.]+", path):
-                project = ProjectInfo.load(path)
-                cls._ensure_neural_storage(project.folder)
-                return NeuralSegmentationProject(
-                    window, project, SegmentationSettings.instance()
-                )
-            show_error("Invalid characters in path. Move project in other folder")
-            return None
+            project = ProjectInfo.load(path)
+            cls._ensure_neural_storage(project.folder)
+            return NeuralSegmentationProject(
+                window, project, SegmentationSettings.instance()
+            )
         except Exception as err:
             show_error(str(err))
             return None
