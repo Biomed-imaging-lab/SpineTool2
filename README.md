@@ -130,6 +130,10 @@ plugins/ai_segmentation/models/stage_4/
 3. Clone [VSOT](https://github.com/yu-lab-vt/VSOT).
 4. In **Neural Segmentation settings**, set the AI models folder, VSOT root (`PATH_TO_VSOT_ROOT`), its MATLAB directory (`PATH_TO_VSOT_ROOT\src\+comSeg`), and your Octave executable (`PATH_TO_OCTAVE\bin\octave-cli.exe`). Replace these placeholders with your installation paths.
 
+## Helper scripts
+
+Auxiliary scripts and instructions for using them are available in the [`scripts`](scripts/README.md) folder, including the Neural Batch GUI for batch AI segmentation of TIFF images.
+
 ## Troubleshooting
 
 ### CGAL does not import
