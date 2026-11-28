@@ -12,6 +12,8 @@ class QtNextStageListWidget(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.next_stage_list = QtLayerList(next_stage_list, True, True)
         self.create_new_button = QtPushButton()
+        self.cleanup_button = QtPushButton()
+        self.cleanup_button.hide()
         self.run_options_widget = None
 
         layout = QtFormLayout()
@@ -20,6 +22,7 @@ class QtNextStageListWidget(QWidget):
         layout1 = QVBoxLayout()
         layout1.setContentsMargins(5, 0, 3, 0)
         layout1.addWidget(self.create_new_button)
+        layout1.addWidget(self.cleanup_button)
         layout.addRow(layout1)
         layout.addWidget(self.next_stage_list)
 
